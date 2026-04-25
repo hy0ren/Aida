@@ -10,8 +10,8 @@ function tabIcon(name: TabIcon) {
   );
 }
 
-// Hide from tab bar; must not set `tabBarButton` with `href` (Expo Router disallows both).
-const hiddenTabOptions = { href: null as const };
+// Hide from tab bar using href: null in options
+const hiddenTabOptions = { href: null };
 
 export default function PatientLayout() {
   const { isReady, isLoggedIn, onboardingComplete, role, theme, mode } = useAidaTheme();

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { demoData } from "@aida/shared";
-import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme } from "../../components/aida";
+import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme, PrimaryButton } from "../../components/aida";
 
 const patients = demoData.providerIntake.patientRoster;
 
@@ -12,6 +12,7 @@ export default function ProviderPatientsScreen() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [selected, setSelected] = useState(patients[0]);
+  const [notes, setNotes] = useState("");
 
   const filtered = useMemo(() => {
     return patients.filter((patient) => {
@@ -139,6 +140,39 @@ export default function ProviderPatientsScreen() {
             Approved summary
           </Text>
           <Text style={{ color: theme.muted, lineHeight: 22, marginTop: 8 }}>{sampleSummary}</Text>
+        </Card>
+
+        <Card>
+          <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900", marginBottom: 10 }}>
+            Clinical Notes
+          </Text>
+          <TextInput
+            multiline
+            numberOfLines={4}
+            placeholder="Post-visit documentation..."
+            placeholderTextColor={theme.faint}
+            value={notes}
+            onChangeText={setNotes}
+            style={{
+              backgroundColor: theme.surface,
+              borderColor: theme.line,
+              borderWidth: 1,
+              borderRadius: 14,
+              padding: 14,
+              color: theme.ink,
+              minHeight: 100,
+              textAlignVertical: "top",
+              marginBottom: 14,
+            }}
+          />
+          <PrimaryButton
+            label="Save Notes"
+            icon="content-save-outline"
+            onPress={() => {
+              // Simulates write back to MongoDB
+              alert("Notes saved to database");
+            }}
+          />
         </Card>
       </View>
     </Screen>

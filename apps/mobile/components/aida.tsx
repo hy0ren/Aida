@@ -40,7 +40,7 @@ export const fonts = {
 };
 
 type ModeName = "light" | "dark";
-export type PaletteName = "red" | "coral" | "ruby" | "plum" | "teal";
+export type PaletteName = "red" | "ruby" | "plum" | "teal";
 export type AidaRole = "patient" | "parent" | "provider";
 
 export const paletteOptions: Record<
@@ -48,7 +48,6 @@ export const paletteOptions: Record<
   { label: string; accent: string; detail: string }
 > = {
   red: { label: "Aida Red", accent: "#dc2626", detail: "Default" },
-  coral: { label: "Coral", accent: "#ef5a4f", detail: "Warm" },
   ruby: { label: "Ruby", accent: "#be123c", detail: "Bold" },
   plum: { label: "Plum", accent: "#8b3a62", detail: "Calm" },
   teal: { label: "Teal", accent: "#0f766e", detail: "Clinical" },
@@ -279,7 +278,8 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   );
 
   const theme = useMemo(() => {
-    const accent = paletteOptions[palette].accent;
+    const paletteItem = paletteOptions[palette] || paletteOptions[DEFAULT_PALETTE];
+    const accent = paletteItem.accent;
     if (mode === "dark") {
       return {
         accent,

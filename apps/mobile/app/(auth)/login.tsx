@@ -184,10 +184,6 @@ export default function LoginScreen() {
             label={isSignup ? "Sign up with Google" : "Login with Google"}
           />
         </View>
-
-        <Text style={{ color: theme.muted, marginTop: 18, textAlign: "center", lineHeight: 20 }}>
-          Verification comes next. Then choose patient, parent, or provider.
-        </Text>
       </View>
       </ScrollView>
     </KeyboardAvoidingView>

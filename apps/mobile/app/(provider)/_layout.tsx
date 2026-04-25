@@ -10,7 +10,7 @@ function tabIcon(name: TabIcon) {
   );
 }
 
-const hiddenTabOptions = { href: null as const };
+const hiddenTabOptions = { href: null };
 
 export default function ProviderLayout() {
   const { isReady, isLoggedIn, onboardingComplete, role, theme, mode } = useAidaTheme();
