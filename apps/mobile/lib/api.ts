@@ -11,7 +11,21 @@ import type {
   UploadResponse,
 } from "@aida/shared";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError) return true; // e.g. fetch failed in RN
+  const s = err instanceof Error ? err.message : String(err);
+  return /Network request failed|Failed to fetch|NetworkError|ECONNREFUSED|ENOTFOUND/i.test(s);
+}
+
+function apiUnreachableHelp(): string {
+  return [
+    "Can't reach the API. On a phone, localhost is the phone, not your PC.",
+    "Create apps/mobile/.env with: EXPO_PUBLIC_API_URL=http://<your-computer-LAN-IP>:3000",
+    "Restart Expo. Run: cd apps/web && npm run dev. Same Wi‑Fi as the computer.",
+  ].join(" ");
+}
 
 export type AuthResponse = {
   token: string;
@@ -27,11 +41,19 @@ export async function authLogin(email: string, password: string): Promise<AuthRe
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}/api${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    if (isNetworkError(err)) {
+      throw new Error(apiUnreachableHelp());
+    }
+    throw err;
+  }
   const payload = (await res.json().catch(() => null)) as ApiResponse<T> | null;
 
   if (!res.ok || !payload?.ok) {
@@ -42,7 +64,15 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}/api${path}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api${path}`);
+  } catch (err) {
+    if (isNetworkError(err)) {
+      throw new Error(apiUnreachableHelp());
+    }
+    throw err;
+  }
   const payload = (await res.json().catch(() => null)) as ApiResponse<T> | null;
 
   if (!res.ok || !payload?.ok) {
