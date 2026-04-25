@@ -1,53 +1,9 @@
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme } from "../../components/aida";
 
-const patients = [
-  {
-    name: "Maria Rivera",
-    age: 38,
-    time: "2:30 PM",
-    reason: "Elevated heart rate",
-    language: "Spanish",
-    status: "Needs review",
-    specialty: "General care",
-    insurance: "Aetna POS II",
-    flagged: true,
-  },
-  {
-    name: "Jae Kim",
-    age: 44,
-    time: "Thu 9:00 AM",
-    reason: "Chest tightness",
-    language: "Korean",
-    status: "Confirmed",
-    specialty: "Cardiology",
-    insurance: "Blue Shield",
-    flagged: true,
-  },
-  {
-    name: "Sofia Alvarez",
-    age: 12,
-    time: "Fri 11:00 AM",
-    reason: "Asthma follow-up",
-    language: "Spanish",
-    status: "Waiting",
-    specialty: "Pediatrics",
-    insurance: "Medi-Cal",
-    flagged: false,
-  },
-  {
-    name: "Noah Patel",
-    age: 51,
-    time: "Completed",
-    reason: "Lab review",
-    language: "English",
-    status: "Completed",
-    specialty: "Internal medicine",
-    insurance: "United",
-    flagged: false,
-  },
-];
+const patients = demoData.providerIntake.patientRoster;
 
 const filters = ["All", "Needs review", "Confirmed", "Flagged"];
 

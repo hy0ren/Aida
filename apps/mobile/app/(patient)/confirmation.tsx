@@ -1,5 +1,7 @@
-import { Text, View } from "react-native";
-import { demoData } from "@aida/shared";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import { demoData, type AppointmentResponse, type SmsResponse } from "@aida/shared";
+import { createAppointment, sendAppointmentSms } from "../../lib/api";
 import {
   Card,
   Icon,
@@ -13,6 +15,37 @@ import {
 
 export default function ConfirmationScreen() {
   const { theme } = useAidaTheme();
+  const [state, setState] = useState<"loading" | "success" | "error">("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [appointment, setAppointment] = useState<AppointmentResponse | null>(null);
+  const [sms, setSms] = useState<SmsResponse | null>(null);
+  const preparation = appointment?.preparation ?? ["Bring insurance card and photo ID"];
+
+  useEffect(() => {
+    let mounted = true;
+
+    createAppointment({ providerId: demoData.providers[0].id })
+      .then(async (appointmentResponse) => {
+        const smsResponse = await sendAppointmentSms({
+          appointmentId: appointmentResponse.appointmentId,
+          patientId: appointmentResponse.patientId,
+        });
+        if (!mounted) return;
+        setAppointment(appointmentResponse);
+        setSms(smsResponse);
+        setState("success");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setState("error");
+        setErrorMessage(error instanceof Error ? error.message : "Unable to load confirmation.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <Screen title="You're booked" subtitle="A confirmation was sent to your phone.">
       <View style={{ gap: 16, paddingBottom: 86 }}>
@@ -47,27 +80,40 @@ export default function ConfirmationScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                {demoData.providers[0].doctor}
+                {appointment?.doctor ?? demoData.providers[0].doctor}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                {demoData.providers[0].specialty}
+                {appointment?.specialty ?? demoData.providers[0].specialty}
               </Text>
             </View>
-            <Pill label={demoData.selectedAppointment.status} icon="check" />
+            <Pill label={appointment?.status ?? demoData.selectedAppointment.status} icon="check" />
           </View>
 
           <View style={{ gap: 12, marginTop: 18 }}>
-            <Detail icon="calendar" text={demoData.selectedAppointment.displayDateTime} />
-            <Detail icon="hospital-building" text={demoData.providers[0].name} />
-            <Detail icon="map-marker" text={demoData.providers[0].address} />
-            <Detail icon="bag-personal" text="Bring insurance card and photo ID" />
+            <Detail
+              icon="calendar"
+              text={appointment ? formatAppointmentTime(appointment.scheduledAt) : demoData.selectedAppointment.displayDateTime}
+            />
+            <Detail icon="hospital-building" text={appointment?.clinicName ?? demoData.providers[0].name} />
+            <Detail icon="map-marker" text={appointment?.address ?? demoData.providers[0].address} />
+            {preparation.map((item) => (
+              <Detail key={item} icon="bag-personal" text={item} />
+            ))}
           </View>
         </Card>
 
         <Card style={{ backgroundColor: theme.surface }}>
-          <Text style={{ color: theme.muted, fontSize: 12, fontWeight: "900" }}>
-            SMS RECEIPT
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={{ color: theme.muted, fontSize: 12, fontWeight: "900" }}>
+              SMS RECEIPT
+            </Text>
+            {state === "loading" && <ActivityIndicator color={theme.accent} />}
+            {state === "error" && <Pill label="Error" icon="alert-circle-outline" tone={colors.red} />}
+            {state === "success" && <Pill label={sms?.status ?? "sent"} icon="check" tone={colors.green} />}
+          </View>
+          {state === "error" && (
+            <Text style={{ color: colors.red, marginTop: 8, fontWeight: "800" }}>{errorMessage}</Text>
+          )}
           <View
             style={{
               marginTop: 10,
@@ -78,7 +124,7 @@ export default function ConfirmationScreen() {
             }}
           >
             <Text style={{ color: theme.ink, lineHeight: 21 }}>
-              {demoData.smsReceipt.body}
+              {sms?.message ?? demoData.smsReceipt.body}
             </Text>
           </View>
         </Card>
@@ -90,6 +136,16 @@ export default function ConfirmationScreen() {
       </View>
     </Screen>
   );
+}
+
+function formatAppointmentTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function Detail({ icon, text }: { icon: "calendar" | "hospital-building" | "map-marker" | "bag-personal"; text: string }) {

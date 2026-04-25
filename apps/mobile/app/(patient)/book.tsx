@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { demoData } from "@aida/shared";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { demoData, type InsuranceVerificationResponse, type ProviderOption } from "@aida/shared";
+import { findProviders, verifyInsurance } from "../../lib/api";
 import {
   Card,
   Icon,
@@ -8,13 +9,77 @@ import {
   PrimaryButton,
   Screen,
   colors,
-  clinics,
   useAidaTheme,
 } from "../../components/aida";
 
 export default function BookScreen() {
   const [selected, setSelected] = useState(0);
+  const [providers, setProviders] = useState<ProviderOption[]>([]);
+  const [recommendedVisit, setRecommendedVisit] = useState(demoData.healthSummary.suggestedVisit);
+  const [providerState, setProviderState] = useState<"loading" | "success" | "error">("loading");
+  const [insuranceState, setInsuranceState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [insurance, setInsurance] = useState<InsuranceVerificationResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const { theme } = useAidaTheme();
+  const selectedProvider = providers[selected];
+
+  useEffect(() => {
+    let mounted = true;
+
+    findProviders({ summaryId: demoData.healthSummary.id, patientId: demoData.patient.id })
+      .then((response) => {
+        if (!mounted) return;
+        setProviders(response.providers);
+        setRecommendedVisit(response.recommendedVisit);
+        setProviderState("success");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setProviders(
+          demoData.providers.map((provider) => ({
+            id: provider.id,
+            name: provider.name,
+            doctor: provider.doctor,
+            specialty: provider.specialty,
+            distance: provider.distance,
+            address: provider.address,
+            phone: provider.phone,
+            nextAvailable: provider.nextAvailable,
+            networkStatus: provider.network === "In-network" ? "in-network" : "review-plan",
+            languages: ["English", demoData.patient.preferredLanguage.label],
+          })),
+        );
+        setProviderState("error");
+        setErrorMessage(error instanceof Error ? error.message : "Provider search failed.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvider) return;
+
+    let mounted = true;
+    setInsuranceState("loading");
+
+    verifyInsurance({ providerId: selectedProvider.id, patientId: demoData.patient.id })
+      .then((response) => {
+        if (!mounted) return;
+        setInsurance(response);
+        setInsuranceState("success");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setInsuranceState("error");
+        setErrorMessage(error instanceof Error ? error.message : "Insurance verification failed.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedProvider]);
 
   return (
     <Screen
@@ -30,7 +95,7 @@ export default function BookScreen() {
                 Suggested visit
               </Text>
               <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 4 }}>
-                {demoData.healthSummary.suggestedVisit}
+                {recommendedVisit}
               </Text>
             </View>
           </View>
@@ -38,18 +103,42 @@ export default function BookScreen() {
 
         <Card>
           <Text style={[sectionTitle, { color: theme.ink }]}>Insurance check</Text>
+          <ApiStatus state={insuranceState} error={errorMessage} />
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            <Pill label={demoData.insurance.detectedLabel} icon="card-account-details" />
-            <Pill label={demoData.insurance.estimatedCopay} icon="cash" tone={colors.green} />
-            <Pill label={demoData.insurance.networkStatus} icon="check" tone={theme.accent} />
+            <Pill label={insurance?.insurance.carrier ?? demoData.insurance.detectedLabel} icon="card-account-details" />
+            <Pill
+              label={`$${insurance?.insurance.estimatedCopay ?? 25} estimated copay`}
+              icon="cash"
+              tone={colors.green}
+            />
+            <Pill
+              label={insurance?.eligible ? "Verified in-network" : demoData.insurance.networkStatus}
+              icon="check"
+              tone={theme.accent}
+            />
           </View>
         </Card>
 
         <View style={{ gap: 10 }}>
-          {clinics.map((clinic, index) => {
+          {providerState === "loading" && (
+            <Card style={{ backgroundColor: theme.surface }}>
+              <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <ActivityIndicator color={theme.accent} />
+                <Text style={{ color: theme.ink, fontWeight: "800" }}>Finding in-network providers...</Text>
+              </View>
+            </Card>
+          )}
+          {providerState === "error" && (
+            <Card style={{ backgroundColor: `${colors.red}10`, borderColor: `${colors.red}44` }}>
+              <Text style={{ color: theme.ink, fontWeight: "800", lineHeight: 20 }}>
+                Showing saved demo providers. {errorMessage}
+              </Text>
+            </Card>
+          )}
+          {providers.map((clinic, index) => {
             const active = selected === index;
             return (
-              <Pressable key={clinic.name} onPress={() => setSelected(index)}>
+              <Pressable key={clinic.id} onPress={() => setSelected(index)}>
                 <Card
                   style={{
                     borderColor: active ? theme.accent : theme.line,
@@ -78,8 +167,11 @@ export default function BookScreen() {
                       </Text>
                       <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
                         <Pill label={clinic.distance} icon="map-marker" tone={colors.faint} />
-                        <Pill label={clinic.network} icon="shield-check" />
-                        <Pill label={clinic.next} icon="calendar-clock" tone={colors.plum} />
+                        <Pill
+                          label={clinic.networkStatus === "in-network" ? "In-network" : "Review plan"}
+                          icon="shield-check"
+                        />
+                        <Pill label={formatSlot(clinic.nextAvailable)} icon="calendar-clock" tone={colors.plum} />
                       </View>
                     </View>
                     {active && <Icon name="check-circle" size={22} color={theme.accent} />}
@@ -91,13 +183,57 @@ export default function BookScreen() {
         </View>
 
         <PrimaryButton
-          href="/(patient)/call-status"
+          href={`/(patient)/call-status?providerId=${selectedProvider?.id ?? ""}`}
           icon="phone"
-          label="Book with AI agent"
+          label={insuranceState === "loading" ? "Verifying insurance..." : "Book with AI agent"}
+          disabled={!selectedProvider || insuranceState === "loading"}
         />
       </View>
     </Screen>
   );
+}
+
+function ApiStatus({
+  state,
+  error,
+}: {
+  state: "idle" | "loading" | "success" | "error";
+  error: string;
+}) {
+  const { theme } = useAidaTheme();
+
+  if (state === "idle") return null;
+
+  return (
+    <View style={{ flexDirection: "row", gap: 8, alignItems: "center", marginBottom: 12 }}>
+      {state === "loading" ? (
+        <ActivityIndicator color={theme.accent} />
+      ) : (
+        <Icon
+          name={state === "success" ? "check-circle" : "alert-circle-outline"}
+          size={18}
+          color={state === "success" ? colors.green : colors.red}
+        />
+      )}
+      <Text style={{ color: theme.muted, flex: 1, lineHeight: 18, fontWeight: "700" }}>
+        {state === "loading"
+          ? "Checking eligibility with the mocked insurance endpoint."
+          : state === "success"
+            ? "Eligibility verified for the selected provider."
+            : error}
+      </Text>
+    </View>
+  );
+}
+
+function formatSlot(value: string) {
+  if (!value.includes("T")) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 const sectionTitle = {

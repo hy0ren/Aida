@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { demoData } from "@aida/shared";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { uploadPatientIntake } from "../../lib/api";
@@ -20,8 +21,7 @@ type UploadStatus = "empty" | "ready" | "uploaded";
 type ApiState = "idle" | "loading" | "success" | "error";
 
 const healthSources: HealthSource[] = ["Apple Health", "Garmin", "Oura", "Whoop", "CSV/PDF"];
-const intakeNotes =
-  "I have felt tired for three days and noticed my heart rate staying higher than usual. Prefer Spanish-speaking clinic staff if available.";
+const intakeNotes = demoData.healthSummary.notesForAida;
 
 export default function UploadScreen() {
   const router = useRouter();
@@ -138,10 +138,10 @@ export default function UploadScreen() {
               <Pill label={insuranceComplete ? "Verified format" : "Draft"} icon="text-recognition" />
             </View>
             <View style={{ gap: 10, marginTop: 12 }}>
-              <Field label="Carrier" value="Aetna" />
-              <Field label="Plan" value="Choice POS II" />
-              <Field label="Member ID" value="XGH 482-19-7720" />
-              <Field label="Group number" value="884216" />
+              <Field label="Carrier" value={demoData.insurance.carrier} />
+              <Field label="Plan" value={demoData.insurance.plan} />
+              <Field label="Member ID" value={demoData.insurance.memberId} />
+              <Field label="Group number" value={demoData.insurance.groupNumber} />
             </View>
           </View>
         </Card>
@@ -204,8 +204,9 @@ export default function UploadScreen() {
               />
               {healthUploaded && (
                 <View style={styles.fileList}>
-                  <FileRow name="apple_health_export.zip" detail="2.4 MB - synced just now" />
-                  <FileRow name="sleep_hrv_report.pdf" detail="843 KB - last 30 days" />
+                  {demoData.healthSummary.uploadFiles.map((file) => (
+                    <FileRow key={file.name} name={file.name} detail={file.detail} />
+                  ))}
                 </View>
               )}
             </View>
@@ -213,21 +214,25 @@ export default function UploadScreen() {
             <View style={{ gap: 12 }}>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Resting HR" value="78 bpm" />
+                  <Field label="Resting HR" value={demoData.healthSummary.manualMeasurements.restingHeartRate} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="HRV" value="42 ms" />
+                  <Field label="HRV" value={demoData.healthSummary.manualMeasurements.hrv} />
                 </View>
               </View>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Sleep" value="5h 45m" />
+                  <Field label="Sleep" value={demoData.healthSummary.manualMeasurements.sleep} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="Blood pressure" value="128/82" />
+                  <Field label="Blood pressure" value={demoData.healthSummary.manualMeasurements.bloodPressure} />
                 </View>
               </View>
-              <Field label="Symptoms or measurements" multiline value="Fatigue, dizziness when standing, and higher than usual resting heart rate." />
+              <Field
+                label="Symptoms or measurements"
+                multiline
+                value={demoData.healthSummary.manualMeasurements.symptoms}
+              />
               <SecondaryButton
                 icon={manualEntry ? "check" : "content-save"}
                 label={manualEntry ? "Manual data saved" : "Save manual data"}

@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { demoData } from "@aida/shared";
+import { summarizeUpload } from "../../lib/api";
 import {
   Card,
   MetricCard,
@@ -15,8 +16,38 @@ import {
 
 export default function SummaryScreen() {
   const [summary, setSummary] = useState(sampleSummary);
+  const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
+  const [statusMessage, setStatusMessage] = useState("Generating summary from uploaded insurance and biometric data.");
+  const [shareItems, setShareItems] = useState([
+    "Approved summary",
+    "Insurance details",
+    `Preferred language: ${demoData.patient.preferredLanguage.label}`,
+    demoData.selectedAppointment.reason,
+  ]);
   const { theme, language } = useAidaTheme();
   const flaggedMetrics = demoData.biometricMetrics.filter((metric) => metric.status === "attention");
+
+  useEffect(() => {
+    let mounted = true;
+
+    summarizeUpload({ uploadId: "upload-elena-2026-04-25", patientId: demoData.patient.id })
+      .then((response) => {
+        if (!mounted) return;
+        setSummary(response.summary);
+        setShareItems(response.shareItems);
+        setSummaryState("success");
+        setStatusMessage(`${response.specialtyRecommendation} recommended. Urgency: ${response.urgency}.`);
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setSummaryState("error");
+        setStatusMessage(error instanceof Error ? error.message : "Summary failed. Please try again.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <Screen
@@ -44,6 +75,7 @@ export default function SummaryScreen() {
 
         <Card>
           <Text style={[sectionTitle, { color: theme.ink }]}>Summary for your doctor</Text>
+          <ApiStatus state={summaryState} message={statusMessage} />
           <TextInput
             multiline
             value={summary}
@@ -67,10 +99,14 @@ export default function SummaryScreen() {
         <Card>
           <Text style={[sectionTitle, { color: theme.ink }]}>What will be shared</Text>
           <View style={{ gap: 8 }}>
-            <Pill label="Approved summary" icon="check" />
-            <Pill label="Insurance details" icon="card-account-details" tone={colors.plum} />
-            <Pill label={`Preferred language: ${language}`} icon="translate" tone={colors.amber} />
-            <Pill label={demoData.selectedAppointment.reason} icon="stethoscope" tone={colors.green} />
+            {shareItems.map((item, index) => (
+              <Pill
+                key={item}
+                label={item.replace(demoData.patient.preferredLanguage.label, language)}
+                icon={index === 0 ? "check" : index === 1 ? "card-account-details" : index === 2 ? "translate" : "stethoscope"}
+                tone={index === 1 ? colors.plum : index === 2 ? colors.amber : index === 3 ? colors.green : undefined}
+              />
+            ))}
           </View>
         </Card>
 
@@ -80,6 +116,44 @@ export default function SummaryScreen() {
         </View>
       </View>
     </Screen>
+  );
+}
+
+function ApiStatus({
+  state,
+  message,
+}: {
+  state: "loading" | "success" | "error";
+  message: string;
+}) {
+  const { theme } = useAidaTheme();
+  const tone = state === "success" ? colors.green : state === "error" ? colors.red : theme.accent;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        gap: 8,
+        alignItems: "center",
+        backgroundColor: `${tone}10`,
+        borderRadius: 14,
+        padding: 10,
+        marginBottom: 12,
+      }}
+    >
+      {state === "loading" ? (
+        <ActivityIndicator color={tone} />
+      ) : (
+        <Pill
+          label={state === "success" ? "Ready" : "Error"}
+          icon={state === "success" ? "check" : "alert-circle-outline"}
+          tone={tone}
+        />
+      )}
+      <Text style={{ color: theme.ink, flex: 1, fontSize: 13, fontWeight: "700", lineHeight: 18 }}>
+        {message}
+      </Text>
+    </View>
   );
 }
 

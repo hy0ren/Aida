@@ -1,20 +1,10 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
-const slots = [
-  { time: "Wed 2:30 PM", status: "Booked", patient: "Maria Rivera" },
-  { time: "Thu 9:00 AM", status: "Open", patient: "Available for agent" },
-  { time: "Fri 11:00 AM", status: "Open", patient: "Available for agent" },
-  { time: "Mon 1:15 PM", status: "Held", patient: "Manual review" },
-];
-
-const visits = [
-  ["Maria Rivera", "AI-booked intake", "Wed 2:30 PM"],
-  ["Jae Kim", "Cardiology consult", "Thu 9:00 AM"],
-  ["Sofia Alvarez", "Follow-up", "Fri 11:00 AM"],
-  ["Noah Patel", "Lab review", "Completed"],
-];
+const slots = demoData.providerIntake.scheduleSlots;
+const visits = demoData.appointmentHistory;
 
 export default function ScheduleManagementScreen() {
   const { theme } = useAidaTheme();
@@ -66,7 +56,7 @@ export default function ScheduleManagementScreen() {
               </Text>
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                 <Pill label="English calls" icon="phone" />
-                <Pill label="Aetna accepted" icon="shield-check" tone={colors.green} />
+                <Pill label={demoData.insurance.acceptedLabel} icon="shield-check" tone={colors.green} />
                 <Pill label="15 min buffer" icon="timer-outline" tone={colors.plum} />
               </View>
             </Card>
@@ -92,15 +82,15 @@ export default function ScheduleManagementScreen() {
             ))}
           </>
         ) : (
-          visits.map(([name, reason, status], index) => (
-            <Card key={`${name}-${reason}`}>
+          visits.map((visit, index) => (
+            <Card key={visit.id}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Icon name="clipboard-text-clock-outline" size={24} color={theme.accent} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>{name}</Text>
-                  <Text style={{ color: theme.muted, marginTop: 3 }}>{reason}</Text>
+                  <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>{visit.patientName}</Text>
+                  <Text style={{ color: theme.muted, marginTop: 3 }}>{visit.reason}</Text>
                 </View>
-                <Pill label={status} tone={index === 0 ? theme.accent : colors.faint} />
+                <Pill label={visit.dateTime} tone={index === 0 ? theme.accent : colors.faint} />
               </View>
             </Card>
           ))

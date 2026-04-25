@@ -25,7 +25,9 @@ export interface DemoInsuranceData {
   plan: string;
   memberId: string;
   groupNumber: string;
+  payerPhone: string;
   networkStatus: string;
+  estimatedCopayAmount: number;
   estimatedCopay: string;
   acceptedLabel: string;
   detectedLabel: string;
@@ -215,7 +217,7 @@ const selectedAppointment: DemoSelectedAppointment = {
   id: "appt-2026-05-06-bayview",
   patientId: patient.id,
   clinicId: providers[0].id,
-  providerId: "provider-lin-chen",
+  providerId: providers[0].id,
   status: "Confirmed",
   scheduledAt: "2026-05-06T14:30:00-07:00",
   dateLabel: "Wed, May 6",
@@ -235,7 +237,9 @@ export const demoData: DemoData = {
     plan: "Choice POS II",
     memberId: "DEMO-482-19-7720",
     groupNumber: "884216",
+    payerPhone: "+1 (800) 555-0199",
     networkStatus: "2 in-network",
+    estimatedCopayAmount: 25,
     estimatedCopay: "$25 estimated copay",
     acceptedLabel: "Aetna accepted",
     detectedLabel: "Aetna detected",

@@ -1,163 +1,103 @@
-import type {
-  AppointmentResponse,
-  BiometricMetric,
-  CallSessionResponse,
-  FindProvidersResponse,
-  InsuranceProfile,
-  InsuranceVerificationResponse,
-  ProviderOption,
-  SmsResponse,
-  SummaryResponse,
-  UploadResponse,
+import {
+  demoData,
+  type AppointmentResponse,
+  type BiometricMetric,
+  type CallSessionResponse,
+  type FindProvidersResponse,
+  type InsuranceProfile,
+  type InsuranceVerificationResponse,
+  type ProviderOption,
+  type SmsResponse,
+  type SummaryResponse,
+  type UploadResponse,
 } from '@aida/shared';
 
-export const demoPatient = {
-  id: 'pat_maria_rivera',
-  name: 'Maria Rivera',
-  dob: '1988-04-18',
-  phone: '+14155550148',
-  language: 'Spanish',
-  timezone: 'America/Los_Angeles',
-};
+export const demoPatient = demoData.patient;
 
 export const demoInsurance: InsuranceProfile = {
-  carrier: 'Aetna',
-  plan: 'Choice POS II',
-  memberId: 'XGH 482-19-7720',
-  groupNumber: '884216',
-  payerPhone: '+18008723867',
-  network: 'Aetna Choice POS II',
-  estimatedCopay: 25,
+  carrier: demoData.insurance.carrier,
+  plan: demoData.insurance.plan,
+  memberId: demoData.insurance.memberId,
+  groupNumber: demoData.insurance.groupNumber,
+  payerPhone: demoData.insurance.payerPhone,
+  network: demoData.insurance.networkStatus,
+  estimatedCopay: demoData.insurance.estimatedCopayAmount,
 };
 
-export const demoBiometrics: BiometricMetric[] = [
-  {
-    label: 'Resting HR',
-    value: '78',
-    unit: 'bpm',
-    baseline: '66 bpm',
-    status: 'flagged',
-    detail: '+12 above usual baseline for three days',
-  },
-  {
-    label: 'Sleep',
-    value: '65',
-    unit: '/100',
-    baseline: '82/100',
-    status: 'flagged',
-    detail: 'Sleep quality and duration are lower than usual',
-  },
-  {
-    label: 'HRV',
-    value: '42',
-    unit: 'ms',
-    baseline: '58 ms',
-    status: 'flagged',
-    detail: 'Lower recovery trend over the past 72 hours',
-  },
-  {
-    label: 'Steps',
-    value: '5.2k',
-    baseline: '6.8k',
-    status: 'normal',
-    detail: 'Activity is slightly below normal range',
-  },
-];
+export const demoBiometrics: BiometricMetric[] = demoData.biometricMetrics.map((metric) => ({
+  label: metric.label,
+  value: metric.value,
+  unit: metric.unit,
+  baseline: metric.summaryDetail,
+  status: metric.status === 'attention' ? 'flagged' : 'normal',
+  detail: metric.detail,
+}));
 
-export const demoProviders: ProviderOption[] = [
-  {
-    id: 'prov_bayview_chen',
-    name: 'Bayview Family Medicine',
-    doctor: 'Dr. Lin Chen',
-    specialty: 'General Practitioner',
-    distance: '0.4 mi',
-    address: '1840 Mission St, San Francisco',
-    phone: '+14155550191',
-    nextAvailable: '2026-05-06T14:30:00-07:00',
-    networkStatus: 'in-network',
-    languages: ['English', 'Spanish'],
-  },
-  {
-    id: 'prov_mission_okonkwo',
-    name: 'Mission Heart & Vascular',
-    doctor: 'Dr. Ruth Okonkwo',
-    specialty: 'Cardiology',
-    distance: '1.1 mi',
-    address: '2301 Mission St, San Francisco',
-    phone: '+14155550192',
-    nextAvailable: '2026-05-07T09:00:00-07:00',
-    networkStatus: 'in-network',
-    languages: ['English'],
-  },
-  {
-    id: 'prov_sunset_vasquez',
-    name: 'Sunset Internal Medicine',
-    doctor: 'Dr. Paula Vasquez',
-    specialty: 'Internal Medicine',
-    distance: '2.0 mi',
-    address: '1199 Irving St, San Francisco',
-    phone: '+14155550193',
-    nextAvailable: '2026-05-08T11:00:00-07:00',
-    networkStatus: 'review-plan',
-    languages: ['English', 'Spanish'],
-  },
-];
+export const demoProviders: ProviderOption[] = demoData.providers.map((provider) => ({
+  id: provider.id,
+  name: provider.name,
+  doctor: provider.doctor,
+  specialty: provider.specialty,
+  distance: provider.distance,
+  address: provider.address,
+  phone: provider.phone,
+  nextAvailable: provider.nextAvailable,
+  networkStatus: provider.network === 'In-network' ? 'in-network' : 'review-plan',
+  languages: ['English', demoData.patient.preferredLanguage.label],
+}));
 
 export const demoUploadResponse: UploadResponse = {
-  uploadId: 'upl_maria_20260425',
-  patientId: demoPatient.id,
+  uploadId: 'upload-demo-2026-04-25',
+  patientId: demoData.patient.id,
   insurance: demoInsurance,
   biometrics: demoBiometrics,
   files: [
     {
-      id: 'file_ins_front',
-      name: 'aetna_card_front.jpg',
+      id: 'file-insurance-front',
+      name: 'insurance_front.jpg',
       type: 'insurance-front',
       source: 'mobile-camera',
       status: 'processed',
     },
     {
-      id: 'file_ins_back',
-      name: 'aetna_card_back.jpg',
+      id: 'file-insurance-back',
+      name: 'insurance_back.jpg',
       type: 'insurance-back',
       source: 'mobile-camera',
       status: 'processed',
     },
     {
-      id: 'file_apple_health',
-      name: 'apple_health_export.zip',
+      id: 'file-health-export',
+      name: demoData.healthSummary.uploadFiles[0].name,
       type: 'biometric-export',
       source: 'Apple Health',
       status: 'processed',
     },
   ],
-  notes:
-    'Fatigue for three days, dizziness when standing, and a higher than usual resting heart rate. Prefers Spanish updates.',
+  notes: demoData.healthSummary.notesForAida,
   readyForSummary: true,
 };
 
 export const demoSummaryResponse: SummaryResponse = {
-  summaryId: 'sum_maria_20260425',
-  patientId: demoPatient.id,
+  summaryId: demoData.healthSummary.id,
+  patientId: demoData.patient.id,
   uploadId: demoUploadResponse.uploadId,
-  specialtyRecommendation: 'General practitioner or cardiology screening',
+  specialtyRecommendation: demoData.selectedAppointment.visitType,
   urgency: 'soon',
-  summary:
-    'Maria Rivera reports three days of fatigue and dizziness when standing. Her wearable data shows resting heart rate elevated to 78 bpm versus a 66 bpm baseline, with lower sleep score and reduced HRV over the same period. She denies emergency symptoms in the intake notes, but the trend may warrant evaluation for illness, stress response, dehydration, medication effects, or cardiovascular strain. Please review symptoms, vitals, and whether further cardiac screening is appropriate.',
+  summary: demoData.healthSummary.approvedSummary,
   shareItems: [
     'Approved clinician summary',
-    'Aetna Choice POS II insurance details',
-    'Last 30 days of wearable trends',
-    'Preferred language: Spanish',
+    `${demoData.insurance.carrier} ${demoData.insurance.plan} insurance details`,
+    `Preferred language: ${demoData.patient.preferredLanguage.label}`,
   ],
   biometricHighlights: demoBiometrics.filter((metric) => metric.status === 'flagged'),
 };
 
 export function findProvidersResponse(summaryId = demoSummaryResponse.summaryId): FindProvidersResponse {
   return {
-    patientId: demoPatient.id,
+    patientId: demoData.patient.id,
     summaryId,
-    recommendedVisit: 'General practitioner or cardiology screening for elevated resting heart rate and fatigue.',
+    recommendedVisit: demoData.healthSummary.suggestedVisit,
     providers: demoProviders,
   };
 }
@@ -167,8 +107,8 @@ export function verifyInsuranceResponse(providerId = demoProviders[0].id): Insur
   const verified = provider.networkStatus === 'in-network';
 
   return {
-    verificationId: `ver_${provider.id}`,
-    patientId: demoPatient.id,
+    verificationId: `verify-${provider.id}`,
+    patientId: demoData.patient.id,
     providerId: provider.id,
     insurance: demoInsurance,
     eligible: verified,
@@ -183,50 +123,43 @@ export function callSessionResponse(providerId = demoProviders[0].id): CallSessi
   const provider = demoProviders.find((item) => item.id === providerId) ?? demoProviders[0];
 
   return {
-    callSessionId: `call_${provider.id}_20260425`,
-    patientId: demoPatient.id,
+    callSessionId: `call-${provider.id}-demo`,
+    patientId: demoData.patient.id,
     providerId: provider.id,
     clinicName: provider.name,
-    status: 'calling',
-    stages: ['Calling clinic', 'Connected', 'Verifying insurance', 'Confirmed'],
-    transcript: [
-      `Aida: Hi, I am calling on behalf of ${demoPatient.name} to schedule a visit.`,
-      `Clinic: What insurance and reason for visit?`,
-      `Aida: ${demoInsurance.carrier} ${demoInsurance.plan}. Elevated resting heart rate and fatigue for three days.`,
-      `Clinic: ${provider.doctor} has Wednesday, May 6 at 2:30 PM.`,
-      'Aida: That works. Please book it and send the confirmation to Maria.',
-    ],
+    status: 'confirmed',
+    stages: demoData.providerIntake.callStages,
+    transcript: demoData.providerIntake.callTranscript,
     appointment: {
       providerId: provider.id,
       doctor: provider.doctor,
       specialty: provider.specialty,
       clinicName: provider.name,
       address: provider.address,
-      scheduledAt: '2026-05-06T14:30:00-07:00',
+      scheduledAt: demoData.selectedAppointment.scheduledAt,
     },
   };
 }
 
 export const demoAppointmentResponse: AppointmentResponse = {
-  appointmentId: 'appt_maria_chen_20260506',
-  patientId: demoPatient.id,
+  appointmentId: demoData.selectedAppointment.id,
+  patientId: demoData.patient.id,
   providerId: demoProviders[0].id,
   doctor: demoProviders[0].doctor,
   specialty: demoProviders[0].specialty,
   clinicName: demoProviders[0].name,
   address: demoProviders[0].address,
-  scheduledAt: '2026-05-06T14:30:00-07:00',
+  scheduledAt: demoData.selectedAppointment.scheduledAt,
   status: 'confirmed',
-  preparation: ['Bring insurance card and photo ID', 'Bring current medication list', 'Arrive 15 minutes early'],
+  preparation: ['Bring insurance card and photo ID', 'Bring current medication list', 'Arrive 10 minutes early'],
 };
 
 export const demoSmsResponse: SmsResponse = {
-  smsId: 'sms_maria_confirmation_20260425',
-  patientId: demoPatient.id,
-  appointmentId: demoAppointmentResponse.appointmentId,
-  to: demoPatient.phone,
-  language: 'es',
+  smsId: demoData.smsReceipt.id,
+  patientId: demoData.patient.id,
+  appointmentId: demoData.selectedAppointment.id,
+  to: demoData.smsReceipt.toMasked,
+  language: demoData.patient.preferredLanguage.label,
   status: 'sent',
-  message:
-    'Aida: Cita confirmada con Dr. Lin Chen el miercoles 6 de mayo a las 2:30 PM. Responde CANCELAR para anular.',
+  message: demoData.smsReceipt.body,
 };
