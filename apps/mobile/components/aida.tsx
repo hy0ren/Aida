@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -25,11 +26,11 @@ export const colors = {
   paper: "#fbfbf8",
   wash: "#eff4f1",
   card: "#ffffff",
-  teal: "#c94f47",
+  teal: "#dc2626",
   plum: "#6e3a6e",
   amber: "#d58a41",
   green: "#2f855a",
-  red: "#b54735",
+  red: "#dc2626",
 };
 
 export const fonts = {
@@ -39,7 +40,21 @@ export const fonts = {
 };
 
 type ModeName = "light" | "dark";
+export type PaletteName = "red" | "coral" | "ruby" | "plum" | "teal";
 export type AidaRole = "patient" | "parent" | "provider";
+
+export const paletteOptions: Record<
+  PaletteName,
+  { label: string; accent: string; detail: string }
+> = {
+  red: { label: "Aida Red", accent: "#dc2626", detail: "Default" },
+  coral: { label: "Coral", accent: "#ef5a4f", detail: "Warm" },
+  ruby: { label: "Ruby", accent: "#be123c", detail: "Bold" },
+  plum: { label: "Plum", accent: "#8b3a62", detail: "Calm" },
+  teal: { label: "Teal", accent: "#0f766e", detail: "Clinical" },
+};
+
+const paletteKeys = Object.keys(paletteOptions) as PaletteName[];
 
 export type PatientProfile = {
   name: string;
@@ -58,7 +73,8 @@ export type ProviderProfile = {
   timezone: string;
 };
 
-const RED_ACCENT = "#c94f47";
+const DEFAULT_PALETTE: PaletteName = "red";
+const SWITCH_ACTIVE = "#22c55e";
 const STORAGE_KEY = "aida.demoState.v1";
 
 const defaultPatientProfile: PatientProfile = {
@@ -90,6 +106,7 @@ type ThemeState = {
   patientProfile: PatientProfile;
   providerProfile: ProviderProfile;
   mode: ModeName;
+  palette: PaletteName;
   language: string;
   notifications: boolean;
   calendarSync: boolean;
@@ -103,6 +120,7 @@ type ThemeState = {
   updatePatientProfile: (profile: Partial<PatientProfile>) => void;
   updateProviderProfile: (profile: Partial<ProviderProfile>) => void;
   setMode: (mode: ModeName) => void;
+  setPalette: (palette: PaletteName) => void;
   setLanguage: (language: string) => void;
   setNotifications: (enabled: boolean) => void;
   setCalendarSync: (enabled: boolean) => void;
@@ -128,7 +146,8 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [patientProfile, setPatientProfile] = useState<PatientProfile>(defaultPatientProfile);
   const [providerProfile, setProviderProfile] = useState<ProviderProfile>(defaultProviderProfile);
   const [mode, setMode] = useState<ModeName>("light");
-  const [language, setLanguage] = useState(demoData.patient.preferredLanguage.label);
+  const [palette, setPalette] = useState<PaletteName>(DEFAULT_PALETTE);
+  const [language, setLanguage] = useState("English");
   const [notifications, setNotifications] = useState(true);
   const [calendarSync, setCalendarSync] = useState(false);
 
@@ -145,6 +164,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
           patientProfile: Partial<PatientProfile>;
           providerProfile: Partial<ProviderProfile>;
           mode: ModeName;
+          palette: PaletteName;
           language: string;
           notifications: boolean;
           calendarSync: boolean;
@@ -157,6 +177,9 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
         }
         if (saved.mode === "light" || saved.mode === "dark") {
           setMode(saved.mode);
+        }
+        if (saved.palette && paletteKeys.includes(saved.palette)) {
+          setPalette(saved.palette);
         }
         if (typeof saved.language === "string" && saved.language.length > 0) {
           setLanguage(saved.language);
@@ -193,6 +216,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       patientProfile,
       providerProfile,
       mode,
+      palette,
       language,
       notifications,
       calendarSync,
@@ -209,6 +233,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     mode,
     notifications,
     onboardingComplete,
+    palette,
     patientProfile,
     providerProfile,
     role,
@@ -250,7 +275,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   );
 
   const theme = useMemo(() => {
-    const accent = RED_ACCENT;
+    const accent = paletteOptions[palette].accent;
     if (mode === "dark") {
       return {
         accent,
@@ -273,7 +298,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       card: colors.card,
       surface: "#f8fbfa",
     };
-  }, [mode]);
+  }, [mode, palette]);
 
   const value = useMemo(
     () => ({
@@ -284,6 +309,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       patientProfile,
       providerProfile,
       mode,
+      palette,
       language,
       notifications,
       calendarSync,
@@ -293,6 +319,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       updatePatientProfile,
       updateProviderProfile,
       setMode,
+      setPalette,
       setLanguage,
       setNotifications,
       setCalendarSync,
@@ -309,6 +336,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       mode,
       notifications,
       onboardingComplete,
+      palette,
       patientProfile,
       providerProfile,
       role,
@@ -327,6 +355,72 @@ export function useAidaTheme() {
     throw new Error("useAidaTheme must be used inside AidaThemeProvider");
   }
   return value;
+}
+
+export function SectionTitle({ children }: { children: ReactNode }) {
+  const { theme } = useAidaTheme();
+  return <Text style={[styles.sectionTitle, { color: theme.ink }]}>{children}</Text>;
+}
+
+export function SettingToggle({
+  title,
+  detail,
+  value,
+  onValueChange,
+}: {
+  title: string;
+  detail: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  const { theme } = useAidaTheme();
+  return (
+    <View style={styles.settingToggle}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.settingTitle, { color: theme.ink }]}>{title}</Text>
+        <Text style={[styles.settingDetail, { color: theme.muted }]}>{detail}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: theme.line, true: `${SWITCH_ACTIVE}85` }}
+        thumbColor={value ? SWITCH_ACTIVE : "#fff"}
+        ios_backgroundColor={theme.line}
+      />
+    </View>
+  );
+}
+
+export function PaletteSelector() {
+  const { palette, setPalette, theme } = useAidaTheme();
+  return (
+    <View style={styles.paletteGrid}>
+      {paletteKeys.map((key) => {
+        const item = paletteOptions[key];
+        const selected = palette === key;
+        return (
+          <Pressable key={key} onPress={() => setPalette(key)} style={{ flexGrow: 1 }}>
+            <View
+              style={[
+                styles.paletteOption,
+                {
+                  borderColor: selected ? item.accent : theme.line,
+                  backgroundColor: selected ? `${item.accent}12` : theme.surface,
+                },
+              ]}
+            >
+              <View style={[styles.paletteSwatch, { backgroundColor: item.accent }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.paletteLabel, { color: theme.ink }]}>{item.label}</Text>
+                <Text style={[styles.paletteDetail, { color: theme.muted }]}>{item.detail}</Text>
+              </View>
+              {selected && <Icon name="check-circle" size={18} color={item.accent} />}
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -752,6 +846,57 @@ export const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 15,
     fontWeight: "600",
+    fontFamily: fonts.body,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "900",
+    marginBottom: 12,
+    fontFamily: fonts.body,
+  },
+  settingToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 14,
+  },
+  settingTitle: {
+    fontWeight: "900",
+    fontFamily: fonts.body,
+  },
+  settingDetail: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: fonts.body,
+  },
+  paletteGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  paletteOption: {
+    minWidth: 132,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  paletteSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  paletteLabel: {
+    fontWeight: "900",
+    fontSize: 13,
+    fontFamily: fonts.body,
+  },
+  paletteDetail: {
+    marginTop: 1,
+    fontSize: 11,
     fontFamily: fonts.body,
   },
 });

@@ -1,14 +1,30 @@
 import { useRouter } from "expo-router";
-import { Switch, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import {
   Card,
   Field,
   Icon,
+  PaletteSelector,
   Pill,
   Screen,
   SecondaryButton,
+  SectionTitle,
+  SettingToggle,
   useAidaTheme,
 } from "../../components/aida";
+
+const languageOptions = [
+  "English",
+  "Spanish",
+  "Korean",
+  "Chinese",
+  "Arabic",
+  "Hindi",
+  "French",
+  "Tagalog",
+  "Vietnamese",
+  "Portuguese",
+];
 
 export default function ProviderSettingsScreen() {
   const router = useRouter();
@@ -19,6 +35,8 @@ export default function ProviderSettingsScreen() {
     setNotifications,
     calendarSync,
     setCalendarSync,
+    language,
+    setLanguage,
     providerProfile,
     updateProviderProfile,
     logout,
@@ -55,9 +73,52 @@ export default function ProviderSettingsScreen() {
         </Card>
 
         <Card>
-          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
-            Clinic profile
-          </Text>
+          <SectionTitle>Appearance</SectionTitle>
+          <PaletteSelector />
+          <SettingToggle
+            title="Dark mode"
+            detail="Use charcoal provider surfaces"
+            value={mode === "dark"}
+            onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
+          />
+        </Card>
+
+        <Card>
+          <SectionTitle>Preferred language</SectionTitle>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
+            {languageOptions.map((item) => (
+              <Pressable key={item} onPress={() => setLanguage(item)}>
+                <View
+                  style={{
+                    minHeight: 34,
+                    paddingHorizontal: language === item ? 10 : 12,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    backgroundColor: language === item ? theme.accent : theme.surface,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  {language === item && <Icon name="check" size={13} color="#fff" />}
+                  <Text
+                    style={{
+                      color: language === item ? "#fff" : theme.ink,
+                      fontWeight: "800",
+                      fontSize: 12,
+                    }}
+                  >
+                    {item}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+
+        <Card>
+          <SectionTitle>Clinic profile</SectionTitle>
           <View style={{ gap: 12 }}>
             <Field
               label="Clinic name"
@@ -90,15 +151,7 @@ export default function ProviderSettingsScreen() {
         </Card>
 
         <Card>
-          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 4 }}>
-            Preferences
-          </Text>
-          <SettingToggle
-            title="Dark mode"
-            detail="Use charcoal provider surfaces"
-            value={mode === "dark"}
-            onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
-          />
+          <SectionTitle>Preferences</SectionTitle>
           <SettingToggle
             title="New booking alerts"
             detail="Notify clinic staff when Aida books a patient"
@@ -123,33 +176,5 @@ export default function ProviderSettingsScreen() {
         />
       </View>
     </Screen>
-  );
-}
-
-function SettingToggle({
-  title,
-  detail,
-  value,
-  onValueChange,
-}: {
-  title: string;
-  detail: string;
-  value: boolean;
-  onValueChange: (value: boolean) => void;
-}) {
-  const { theme } = useAidaTheme();
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 14 }}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.ink, fontWeight: "900" }}>{title}</Text>
-        <Text style={{ color: theme.muted, marginTop: 3, fontSize: 12 }}>{detail}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: theme.line, true: `${theme.accent}70` }}
-        thumbColor={value ? theme.accent : "#fff"}
-      />
-    </View>
   );
 }

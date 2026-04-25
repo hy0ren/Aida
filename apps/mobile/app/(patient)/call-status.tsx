@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { demoData, type CallSessionResponse } from "@aida/shared";
 import { initiateCall } from "../../lib/api";
-import { Icon, PrimaryButton, colors, useAidaTheme } from "../../components/aida";
+import { Icon, PrimaryButton, useAidaTheme } from "../../components/aida";
 
 export default function CallStatusScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ providerId?: string }>();
-  const { language } = useAidaTheme();
+  const { language, theme } = useAidaTheme();
   const [stage, setStage] = useState(0);
   const [lineCount, setLineCount] = useState(1);
   const [callState, setCallState] = useState<"loading" | "success" | "error">("loading");
@@ -106,7 +106,7 @@ export default function CallStatusScreen() {
                 width: 5,
                 height: 18 + ((index * 13 + stage * 17) % 74),
                 borderRadius: 5,
-                backgroundColor: colors.teal,
+                backgroundColor: theme.accent,
                 opacity: 0.72,
               }}
             />
@@ -119,7 +119,7 @@ export default function CallStatusScreen() {
         </Text>
       </View>
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 10, marginBottom: 22, paddingBottom: 4 }}>
         {callState === "loading" && (
           <View style={{ alignItems: "center", gap: 12 }}>
             <ActivityIndicator color="#eafff9" />
@@ -133,7 +133,7 @@ export default function CallStatusScreen() {
               alignSelf: index % 2 === 0 ? "flex-start" : "flex-end",
               maxWidth: "88%",
               backgroundColor:
-                index % 2 === 0 ? "rgba(15,118,110,0.28)" : "rgba(255,255,255,0.08)",
+                index % 2 === 0 ? `${theme.accent}40` : "rgba(255,255,255,0.08)",
               borderRadius: 18,
               padding: 12,
             }}
@@ -143,7 +143,7 @@ export default function CallStatusScreen() {
         ))}
       </View>
 
-      <View style={{ gap: 12, paddingBottom: 20 }}>
+      <View style={{ gap: 12, paddingBottom: 28, marginTop: 18 }}>
         {callState === "error" && (
           <PrimaryButton
             icon="phone"
@@ -168,7 +168,7 @@ export default function CallStatusScreen() {
                   setErrorMessage(error instanceof Error ? error.message : "Unable to start the mocked call.");
                 });
             }}
-            tone={colors.teal}
+            tone={theme.accent}
           />
         )}
         {callState === "success" && stage === stages.length - 1 && (

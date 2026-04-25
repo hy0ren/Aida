@@ -21,11 +21,11 @@ const languages = [
   "Spanish",
   "Korean",
   "Chinese",
-  "Vietnamese",
-  "Tagalog",
   "Arabic",
   "Hindi",
   "French",
+  "Tagalog",
+  "Vietnamese",
   "Portuguese",
 ];
 
@@ -86,28 +86,29 @@ export default function OnboardingScreen() {
       <View style={{ gap: 16 }}>
         <Card>
           <Text style={[sectionTitle, { color: theme.ink }]}>1. Preferred language</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
             {languages.map((item) => (
               <Pressable key={item} onPress={() => setLanguage(item)}>
                 <View
                   style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
+                    minHeight: 34,
+                    paddingHorizontal: language === item ? 10 : 12,
+                    paddingVertical: 8,
                     borderRadius: 999,
                     backgroundColor:
                       language === item ? theme.accent : theme.surface,
                     flexDirection: "row",
                     alignItems: "center",
+                    justifyContent: "center",
                     gap: 6,
                   }}
                 >
-                  <View style={{ width: 14, height: 14 }}>
-                    {language === item && <Icon name="check" size={14} color="#fff" />}
-                  </View>
+                  {language === item && <Icon name="check" size={13} color="#fff" />}
                   <Text
                     style={{
                       color: language === item ? "#fff" : theme.ink,
                       fontWeight: "800",
+                      fontSize: 12,
                     }}
                   >
                     {item}

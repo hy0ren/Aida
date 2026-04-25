@@ -10,6 +10,12 @@ function tabIcon(name: TabIcon) {
   );
 }
 
+const hiddenTabOptions = {
+  href: null,
+  tabBarButton: () => null,
+  tabBarItemStyle: { display: "none" as const },
+};
+
 export default function PatientLayout() {
   const { isReady, isLoggedIn, onboardingComplete, role, theme, mode } = useAidaTheme();
 
@@ -67,10 +73,10 @@ export default function PatientLayout() {
           tabBarIcon: tabIcon("account-circle-outline"),
         }}
       />
-      <Tabs.Screen name="upload" options={{ href: null }} />
-      <Tabs.Screen name="summary" options={{ href: null }} />
-      <Tabs.Screen name="call-status" options={{ href: null }} />
-      <Tabs.Screen name="confirmation" options={{ href: null }} />
+      <Tabs.Screen name="upload" options={hiddenTabOptions} />
+      <Tabs.Screen name="summary" options={hiddenTabOptions} />
+      <Tabs.Screen name="call-status" options={hiddenTabOptions} />
+      <Tabs.Screen name="confirmation" options={hiddenTabOptions} />
     </Tabs>
   );
 }
