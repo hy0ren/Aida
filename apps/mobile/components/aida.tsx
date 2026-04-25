@@ -574,15 +574,17 @@ export function SecondaryButton({
   icon,
   onPress,
   href,
+  disabled,
 }: {
   label: string;
   icon?: IconName;
   onPress?: () => void;
   href?: string;
+  disabled?: boolean;
 }) {
   const { theme } = useAidaTheme();
   const content = (
-    <View style={[styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.line }]}>
+    <View style={[styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.line, opacity: disabled ? 0.6 : 1 }]}>
       {icon && <Icon name={icon} size={18} color={theme.accent} />}
       <Text style={[styles.secondaryButtonText, { color: theme.accent }]}>{label}</Text>
     </View>
@@ -591,12 +593,12 @@ export function SecondaryButton({
   if (href) {
     return (
       <Link href={href as never} asChild>
-        <Pressable>{content}</Pressable>
+        <Pressable disabled={disabled}>{content}</Pressable>
       </Link>
     );
   }
 
-  return <Pressable onPress={onPress}>{content}</Pressable>;
+  return <Pressable disabled={disabled} onPress={onPress}>{content}</Pressable>;
 }
 
 export function MetricCard({

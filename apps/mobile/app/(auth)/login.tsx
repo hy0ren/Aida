@@ -16,6 +16,8 @@ import {
   fonts,
   useAidaTheme,
 } from "../../components/aida";
+import { GlassScanner, type CapturedCard } from "../../components/GlassScanner";
+import { uploadPatientIntake } from "../../lib/api";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,6 +25,13 @@ export default function LoginScreen() {
   const { theme, logout } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
+  const [backCard, setBackCard] = useState<CapturedCard | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (params.mode === "login") setMode("login");
@@ -32,10 +41,29 @@ export default function LoginScreen() {
     }
   }, [params.mode, logout]);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  function continueWithEmail() {
+  async function continueWithEmail() {
+    if (isSignup && (frontCard || backCard)) {
+      setIsUploading(true);
+      try {
+        const files: Array<{ name: string; type: any; data: string }> = [];
+        if (frontCard?.base64) {
+          files.push({ name: "insurance-card-front.jpg", type: "insurance-front", data: `data:image/jpeg;base64,${frontCard.base64}` });
+        }
+        if (backCard?.base64) {
+          files.push({ name: "insurance-card-back.jpg", type: "insurance-back", data: `data:image/jpeg;base64,${backCard.base64}` });
+        }
+        await uploadPatientIntake({
+          insuranceComplete: Boolean(frontCard && backCard),
+          healthComplete: false,
+          healthSource: "Apple Health",
+          notes: "Uploaded during sign up",
+          files,
+        });
+      } catch (err) {
+        console.warn("Upload failed during signup:", err);
+      }
+      setIsUploading(false);
+    }
     router.push("/(auth)/verify");
   }
 
@@ -173,15 +201,35 @@ export default function LoginScreen() {
             returnKeyType="go"
             importantForAutofill="yes"
           />
+
+          {isSignup && (
+            <View style={{ gap: 10, marginTop: 4 }}>
+              <GlassScanner
+                label="Front of card"
+                detail="Name, plan, member ID"
+                value={frontCard}
+                onChange={setFrontCard}
+              />
+              <GlassScanner
+                label="Back of card"
+                detail="Claims phone and payer details"
+                value={backCard}
+                onChange={setBackCard}
+              />
+            </View>
+          )}
+
           <PrimaryButton
             onPress={continueWithEmail}
-            icon={isSignup ? "account-plus" : "login"}
-            label={isSignup ? "Create account" : "Login"}
+            icon={isSignup && isUploading ? "creation" : isSignup ? "account-plus" : "login"}
+            label={isSignup && isUploading ? "Creating account…" : isSignup ? "Create account" : "Login"}
+            disabled={isUploading}
           />
           <SecondaryButton
             onPress={continueWithGoogle}
             icon="google"
             label={isSignup ? "Sign up with Google" : "Login with Google"}
+            disabled={isUploading}
           />
         </View>
       </View>

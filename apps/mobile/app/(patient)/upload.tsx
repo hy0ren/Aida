@@ -1,15 +1,7 @@
 import { useRouter } from "expo-router";
 import { demoData } from "@aida/shared";
-import { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import * as ImagePicker from "expo-image-picker";
+import { useMemo, useState } from "react";
+import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { uploadPatientIntake } from "../../lib/api";
 import {
   Card,
@@ -22,18 +14,11 @@ import {
   colors,
   useAidaTheme,
 } from "../../components/aida";
+import { GlassScanner, type CapturedCard } from "../../components/GlassScanner";
 
 type HealthMode = "file" | "manual";
 type HealthSource = "Apple Health" | "Garmin" | "Oura" | "Whoop" | "CSV/PDF";
-type UploadStage = "empty" | "capturing" | "processing" | "uploaded";
 type ApiState = "idle" | "loading" | "success" | "error";
-
-interface CapturedCard {
-  uri: string;
-  base64: string;
-  width: number;
-  height: number;
-}
 
 const healthSources: HealthSource[] = ["Apple Health", "Garmin", "Oura", "Whoop", "CSV/PDF"];
 const intakeNotes = demoData.healthSummary.notesForAida;
@@ -43,8 +28,6 @@ export default function UploadScreen() {
   const { theme, mode } = useAidaTheme();
 
   // Insurance card state
-  const [frontStage, setFrontStage] = useState<UploadStage>("empty");
-  const [backStage, setBackStage] = useState<UploadStage>("empty");
   const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
   const [backCard, setBackCard] = useState<CapturedCard | null>(null);
 
@@ -66,116 +49,9 @@ export default function UploadScreen() {
   const [uploadState, setUploadState] = useState<ApiState>("idle");
   const [uploadMessage, setUploadMessage] = useState("Ready to generate a clinician-ready summary.");
 
-  const insuranceComplete = frontStage === "uploaded" && backStage === "uploaded";
+  const insuranceComplete = Boolean(frontCard && backCard);
   const healthComplete = healthUploaded || manualEntry;
   const canGenerate = insuranceComplete && healthComplete;
-
-  // ── Image capture helpers ──────────────────────────────────
-  const requestPermissions = useCallback(async () => {
-    const camera = await ImagePicker.requestCameraPermissionsAsync();
-    const media = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (camera.status !== "granted" || media.status !== "granted") {
-      Alert.alert(
-        "Permissions required",
-        "Aida needs camera and photo library access to photograph your insurance card.",
-        [{ text: "OK" }],
-      );
-      return false;
-    }
-    return true;
-  }, []);
-
-  const captureImage = useCallback(
-    async (
-      source: "camera" | "library",
-      side: "front" | "back",
-    ) => {
-      const ok = await requestPermissions();
-      if (!ok) return;
-
-      const setStage = side === "front" ? setFrontStage : setBackStage;
-      const setCard = side === "front" ? setFrontCard : setBackCard;
-
-      setStage("capturing");
-
-      const options: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [16, 10], // insurance card aspect
-        quality: 0.85,
-        base64: true,
-      };
-
-      let result: ImagePicker.ImagePickerResult;
-      try {
-        if (source === "camera") {
-          result = await ImagePicker.launchCameraAsync(options);
-        } else {
-          result = await ImagePicker.launchImageLibraryAsync(options);
-        }
-      } catch (err) {
-        setStage("empty");
-        const message = err instanceof Error ? err.message : String(err);
-        const noCamera = /not available|simulator/i.test(message);
-        Alert.alert(
-          noCamera ? "Camera unavailable" : "Could not open photo",
-          noCamera
-            ? "The camera is not available here (e.g. iOS Simulator). Use a real device, or pick from your library."
-            : message,
-          noCamera
-            ? [
-                { text: "Choose from library", onPress: () => void captureImage("library", side) },
-                { text: "OK", style: "cancel" },
-              ]
-            : [{ text: "OK" }],
-        );
-        return;
-      }
-
-      if (result.canceled || !result.assets?.[0]) {
-        setStage("empty");
-        return;
-      }
-
-      const asset = result.assets[0];
-      const base64Data = asset.base64 ?? "";
-
-      if (!base64Data) {
-        Alert.alert("Error", "Could not read the selected image.");
-        setStage("empty");
-        return;
-      }
-
-      setStage("processing");
-
-      // Simulate brief OCR processing delay for UX continuity
-      await new Promise((r) => setTimeout(r, 1200));
-
-      setCard({
-        uri: asset.uri,
-        base64: base64Data,
-        width: asset.width ?? 800,
-        height: asset.height ?? 500,
-      });
-      setStage("uploaded");
-    },
-    [requestPermissions],
-  );
-
-  const showCaptureOptions = useCallback(
-    (side: "front" | "back") => {
-      Alert.alert(
-        `${side === "front" ? "Front" : "Back"} of insurance card`,
-        "Take a clear photo or select from your library.",
-        [
-          { text: "Take photo", onPress: () => captureImage("camera", side) },
-          { text: "Choose from library", onPress: () => captureImage("library", side) },
-          { text: "Cancel", style: "cancel" },
-        ],
-      );
-    },
-    [captureImage],
-  );
 
   // ── Upload handler ─────────────────────────────────────────
   const handleUpload = async () => {
@@ -290,27 +166,17 @@ export default function UploadScreen() {
             complete={insuranceComplete}
           />
           <View style={{ gap: 10 }}>
-            <InsuranceDropzone
+            <GlassScanner
               label="Front of card"
               detail="Name, plan, member ID"
-              stage={frontStage}
-              imageUri={frontCard?.uri}
-              onCapture={() => showCaptureOptions("front")}
-              onRemove={() => {
-                setFrontStage("empty");
-                setFrontCard(null);
-              }}
+              value={frontCard}
+              onChange={setFrontCard}
             />
-            <InsuranceDropzone
+            <GlassScanner
               label="Back of card"
               detail="Claims phone and payer details"
-              stage={backStage}
-              imageUri={backCard?.uri}
-              onCapture={() => showCaptureOptions("back")}
-              onRemove={() => {
-                setBackStage("empty");
-                setBackCard(null);
-              }}
+              value={backCard}
+              onChange={setBackCard}
             />
           </View>
 
@@ -476,120 +342,7 @@ export default function UploadScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Insurance card dropzone with real image preview
-// ─────────────────────────────────────────────────────────────
-function InsuranceDropzone({
-  label,
-  detail,
-  stage,
-  imageUri,
-  onCapture,
-  onRemove,
-}: {
-  label: string;
-  detail: string;
-  stage: UploadStage;
-  imageUri?: string;
-  onCapture: () => void;
-  onRemove: () => void;
-}) {
-  const { theme, mode } = useAidaTheme();
-  const isProcessing = stage === "processing";
-  const isUploaded = stage === "uploaded";
-  const isCapturing = stage === "capturing";
 
-  return (
-    <Pressable
-      onPress={isUploaded ? onRemove : onCapture}
-      style={[
-        styles.dropzone,
-        {
-          borderColor: isUploaded ? theme.accent : isProcessing ? colors.amber : theme.line,
-          backgroundColor: isUploaded
-            ? `${theme.accent}10`
-            : isProcessing
-              ? `${colors.amber}08`
-              : theme.surface,
-          overflow: "hidden",
-        },
-      ]}
-    >
-      {/* Show captured image preview */}
-      {imageUri && (isUploaded || isProcessing) && (
-        <View style={{ width: 64, height: 40, borderRadius: 8, overflow: "hidden", marginRight: 4 }}>
-          <Image
-            source={{ uri: imageUri }}
-            style={{ width: 64, height: 40 }}
-            resizeMode="cover"
-          />
-          {isProcessing && (
-            <View
-              style={{
-                position: "absolute",
-                inset: 0,
-                backgroundColor: "rgba(0,0,0,0.3)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ActivityIndicator size="small" color="#fff" />
-            </View>
-          )}
-          {isUploaded && (
-            <View
-              style={{
-                position: "absolute",
-                top: 2,
-                right: 2,
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: theme.accent,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Icon name="check" size={12} color="#fff" />
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Icon when no image yet */}
-      {!imageUri && (
-        <View style={[styles.uploadIcon, { backgroundColor: isCapturing ? `${theme.accent}20` : theme.card }]}>
-          {isCapturing ? (
-            <ActivityIndicator size="small" color={theme.accent} />
-          ) : (
-            <Icon name="camera-plus" size={22} color={theme.accent} />
-          )}
-        </View>
-      )}
-
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900" }}>{label}</Text>
-        <Text style={{ color: theme.muted, lineHeight: 19, marginTop: 3 }}>
-          {isProcessing
-            ? "Reading card with OCR…"
-            : isUploaded
-              ? "Captured — tap to replace"
-              : isCapturing
-                ? "Opening camera…"
-                : detail}
-        </Text>
-      </View>
-
-      {isProcessing && <ActivityIndicator size="small" color={colors.amber} />}
-      {isUploaded && (
-        <Text style={{ color: theme.accent, fontWeight: "900" }}>Replace</Text>
-      )}
-      {stage === "empty" && (
-        <Text style={{ color: theme.accent, fontWeight: "900" }}>Add</Text>
-      )}
-    </Pressable>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 // Reusable sub-components (unchanged logic, lightly cleaned)
