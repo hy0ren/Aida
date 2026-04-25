@@ -1,17 +1,18 @@
 import "react-native-gesture-handler";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { AidaThemeProvider } from "../components/aida";
 
 export default function RootLayout() {
   return (
-    <>
+    <AidaThemeProvider>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#f0f4f8" },
+          contentStyle: { backgroundColor: "#eff4f1" },
         }}
       />
-    </>
+    </AidaThemeProvider>
   );
 }

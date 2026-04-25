@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import { Icon, PrimaryButton, colors } from "../../components/aida";
+import { Icon, PrimaryButton, colors, useAidaTheme } from "../../components/aida";
 
 const transcript = [
   "Aida: Hi, I am calling on behalf of Maria Rivera to schedule a visit.",
@@ -13,6 +14,7 @@ const transcript = [
 
 export default function CallStatusScreen() {
   const router = useRouter();
+  const { language } = useAidaTheme();
   const [stage, setStage] = useState(0);
   const [lineCount, setLineCount] = useState(1);
   const stages = useMemo(
@@ -25,6 +27,7 @@ export default function CallStatusScreen() {
       const timer = setTimeout(() => setStage((value) => value + 1), 1400);
       return () => clearTimeout(timer);
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   }, [stage, stages.length]);
 
   useEffect(() => {
@@ -39,14 +42,14 @@ export default function CallStatusScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: "#081615",
+        backgroundColor: "#18181b",
         padding: 22,
         paddingTop: 72,
         justifyContent: "space-between",
       }}
     >
       <View style={{ alignItems: "center" }}>
-        <Text style={{ color: "#8db7ad", fontSize: 12, fontWeight: "800" }}>
+        <Text style={{ color: "#a1a1aa", fontSize: 12, fontWeight: "800" }}>
           BAYVIEW FAMILY MEDICINE
         </Text>
         <Text
@@ -76,14 +79,14 @@ export default function CallStatusScreen() {
                 width: 5,
                 height: 18 + ((index * 13 + stage * 17) % 74),
                 borderRadius: 5,
-                backgroundColor: stage === 3 ? "#71e2bd" : colors.teal,
+                backgroundColor: colors.teal,
                 opacity: 0.72,
               }}
             />
           ))}
         </View>
-        <Text style={{ color: "#bde5dc", marginTop: 8 }}>
-          Speaking English to the clinic, updating you in Spanish.
+        <Text style={{ color: "#d4d4d8", marginTop: 8 }}>
+          Speaking English to the clinic, updating you in {language}.
         </Text>
       </View>
 

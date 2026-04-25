@@ -9,11 +9,13 @@ import {
   Screen,
   SecondaryButton,
   colors,
+  useAidaTheme,
 } from "../../components/aida";
 
 export default function UploadScreen() {
   const [insuranceAdded, setInsuranceAdded] = useState(true);
   const [healthAdded, setHealthAdded] = useState(false);
+  const { theme } = useAidaTheme();
 
   return (
     <Screen
@@ -31,7 +33,7 @@ export default function UploadScreen() {
 
         {insuranceAdded && (
           <Card>
-            <Text style={sectionTitle}>Card details</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>Card details</Text>
             <View style={{ gap: 10 }}>
               <Field label="Provider" value="Aetna" />
               <Field label="Plan" value="Choice POS II" />
@@ -49,7 +51,7 @@ export default function UploadScreen() {
         />
 
         <Card>
-          <Text style={sectionTitle}>Optional notes</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>Optional notes</Text>
           <Field
             label="Anything the doctor should know?"
             multiline
@@ -57,14 +59,14 @@ export default function UploadScreen() {
           />
         </Card>
 
-        <Card style={{ backgroundColor: "#f6fbfa" }}>
+        <Card style={{ backgroundColor: theme.surface }}>
           <View style={{ flexDirection: "row", gap: 10 }}>
-            <Icon name="shield-check" size={24} color={colors.teal} />
+            <Icon name="shield-check" size={24} color={theme.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontWeight: "900", fontSize: 16 }}>
+              <Text style={{ color: theme.ink, fontWeight: "900", fontSize: 16 }}>
                 Privacy checkpoint
               </Text>
-              <Text style={{ color: colors.muted, lineHeight: 20, marginTop: 4 }}>
+              <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 4 }}>
                 Raw biometric data is summarized on-device before cloud AI receives
                 anything for language generation.
               </Text>
@@ -94,11 +96,12 @@ function UploadCard({
   active: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useAidaTheme();
   return (
     <Pressable onPress={onPress}>
       <Card
         style={{
-          borderColor: active ? colors.teal : "rgba(23,33,31,0.06)",
+          borderColor: active ? theme.accent : theme.line,
           borderWidth: active ? 1.5 : 1,
         }}
       >
@@ -110,16 +113,16 @@ function UploadCard({
               borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: active ? "#e8f7f3" : colors.wash,
+              backgroundColor: active ? `${theme.accent}18` : theme.surface,
             }}
           >
-            <Icon name={icon} size={27} color={active ? colors.teal : colors.muted} />
+            <Icon name={icon} size={27} color={active ? theme.accent : theme.muted} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+            <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
               {title}
             </Text>
-            <Text style={{ color: colors.muted, marginTop: 4, lineHeight: 19 }}>
+            <Text style={{ color: theme.muted, marginTop: 4, lineHeight: 19 }}>
               {detail}
             </Text>
           </View>
@@ -131,7 +134,6 @@ function UploadCard({
 }
 
 const sectionTitle = {
-  color: colors.ink,
   fontSize: 17,
   fontWeight: "900" as const,
   marginBottom: 12,

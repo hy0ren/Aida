@@ -8,10 +8,12 @@ import {
   Screen,
   colors,
   clinics,
+  useAidaTheme,
 } from "../../components/aida";
 
 export default function BookScreen() {
   const [selected, setSelected] = useState(0);
+  const { theme } = useAidaTheme();
 
   return (
     <Screen
@@ -19,14 +21,14 @@ export default function BookScreen() {
       subtitle="Aida found clinics based on your approved summary, location, and insurance."
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
-        <Card style={{ backgroundColor: "#fffaf3" }}>
+        <Card style={{ backgroundColor: theme.surface }}>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <Icon name="alert-circle-outline" size={24} color={colors.amber} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+              <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>
                 Suggested visit
               </Text>
-              <Text style={{ color: colors.muted, lineHeight: 20, marginTop: 4 }}>
+              <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 4 }}>
                 General practitioner or cardiology screening for elevated resting
                 heart rate and fatigue.
               </Text>
@@ -35,11 +37,11 @@ export default function BookScreen() {
         </Card>
 
         <Card>
-          <Text style={sectionTitle}>Insurance check</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>Insurance check</Text>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
             <Pill label="Aetna detected" icon="card-account-details" />
             <Pill label="$25 estimated copay" icon="cash" tone={colors.green} />
-            <Pill label="2 in-network" icon="check" tone={colors.teal} />
+            <Pill label="2 in-network" icon="check" tone={theme.accent} />
           </View>
         </Card>
 
@@ -50,7 +52,7 @@ export default function BookScreen() {
               <Pressable key={clinic.name} onPress={() => setSelected(index)}>
                 <Card
                   style={{
-                    borderColor: active ? colors.teal : "rgba(23,33,31,0.06)",
+                    borderColor: active ? theme.accent : theme.line,
                     borderWidth: active ? 1.5 : 1,
                   }}
                 >
@@ -60,18 +62,18 @@ export default function BookScreen() {
                         width: 48,
                         height: 48,
                         borderRadius: 16,
-                        backgroundColor: active ? "#e8f7f3" : colors.wash,
+                        backgroundColor: active ? `${theme.accent}18` : theme.surface,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <Icon name="hospital-building" size={24} color={active ? colors.teal : colors.muted} />
+                      <Icon name="hospital-building" size={24} color={active ? theme.accent : theme.muted} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+                      <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>
                         {clinic.name}
                       </Text>
-                      <Text style={{ color: colors.muted, marginTop: 3 }}>
+                      <Text style={{ color: theme.muted, marginTop: 3 }}>
                         {clinic.doctor}
                       </Text>
                       <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
@@ -80,7 +82,7 @@ export default function BookScreen() {
                         <Pill label={clinic.next} icon="calendar-clock" tone={colors.plum} />
                       </View>
                     </View>
-                    {active && <Icon name="check-circle" size={22} color={colors.teal} />}
+                    {active && <Icon name="check-circle" size={22} color={theme.accent} />}
                   </View>
                 </Card>
               </Pressable>
@@ -99,7 +101,6 @@ export default function BookScreen() {
 }
 
 const sectionTitle = {
-  color: colors.ink,
   fontSize: 17,
   fontWeight: "900" as const,
   marginBottom: 12,

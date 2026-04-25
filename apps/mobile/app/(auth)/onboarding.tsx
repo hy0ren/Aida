@@ -11,16 +11,34 @@ import {
   SecondaryButton,
   StepDots,
   colors,
+  useAidaTheme,
 } from "../../components/aida";
 
-const languages = ["English", "Spanish", "Korean"];
+const languages = [
+  "English",
+  "Spanish",
+  "Korean",
+  "Chinese",
+  "Vietnamese",
+  "Tagalog",
+  "Arabic",
+  "Hindi",
+  "French",
+  "Portuguese",
+];
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const [language, setLanguage] = useState("Spanish");
   const [role, setRole] = useState<"patient" | "parent" | "provider">("patient");
   const [insurance, setInsurance] = useState(false);
   const [healthData, setHealthData] = useState(false);
+  const [name, setName] = useState("Maria Rivera");
+  const [phone, setPhone] = useState("+1 (415) 555-4729");
+  const [timezone, setTimezone] = useState("America/Los_Angeles");
+  const [emergencyContact, setEmergencyContact] = useState("Ana Rivera");
+  const [clinicEmail, setClinicEmail] = useState("frontdesk@bayview.example");
+  const [clinicCode, setClinicCode] = useState("BAYVIEW-DEMO");
+  const { language, setLanguage, theme } = useAidaTheme();
 
   const isProvider = role === "provider";
 
@@ -32,7 +50,7 @@ export default function OnboardingScreen() {
     >
       <View style={{ gap: 16 }}>
         <Card>
-          <Text style={sectionTitle}>1. Preferred language</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>1. Preferred language</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
             {languages.map((item) => (
               <Pressable key={item} onPress={() => setLanguage(item)}>
@@ -42,7 +60,7 @@ export default function OnboardingScreen() {
                     paddingVertical: 10,
                     borderRadius: 999,
                     backgroundColor:
-                      language === item ? colors.teal : colors.wash,
+                      language === item ? theme.accent : theme.surface,
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 6,
@@ -51,7 +69,7 @@ export default function OnboardingScreen() {
                   {language === item && <Icon name="check" size={14} color="#fff" />}
                   <Text
                     style={{
-                      color: language === item ? "#fff" : colors.ink,
+                      color: language === item ? "#fff" : theme.ink,
                       fontWeight: "800",
                     }}
                   >
@@ -64,7 +82,7 @@ export default function OnboardingScreen() {
         </Card>
 
         <Card>
-          <Text style={sectionTitle}>2. Who are you using Aida for?</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>2. Who are you using Aida for?</Text>
           <View style={{ gap: 10 }}>
             {[
               {
@@ -87,8 +105,8 @@ export default function OnboardingScreen() {
                 <View
                   style={{
                     borderWidth: 1.5,
-                    borderColor: role === item.id ? colors.teal : colors.line,
-                    backgroundColor: role === item.id ? "#f3fbf9" : "#fff",
+                    borderColor: role === item.id ? theme.accent : theme.line,
+                    backgroundColor: role === item.id ? theme.surface : theme.card,
                     borderRadius: 16,
                     padding: 14,
                     flexDirection: "row",
@@ -99,12 +117,12 @@ export default function OnboardingScreen() {
                   <Icon
                     name={item.icon as never}
                     size={22}
-                    color={role === item.id ? colors.teal : colors.muted}
+                    color={role === item.id ? theme.accent : theme.muted}
                   />
-                  <Text style={{ flex: 1, color: colors.ink, fontWeight: "800" }}>
+                  <Text style={{ flex: 1, color: theme.ink, fontWeight: "800" }}>
                     {item.title}
                   </Text>
-                  {role === item.id && <Icon name="check-circle" color={colors.teal} />}
+                  {role === item.id && <Icon name="check-circle" color={theme.accent} />}
                 </View>
               </Pressable>
             ))}
@@ -113,8 +131,8 @@ export default function OnboardingScreen() {
 
         {!isProvider && (
           <Card>
-            <Text style={sectionTitle}>3. Optional demo uploads</Text>
-            <Text style={{ color: colors.muted, lineHeight: 20, marginBottom: 14 }}>
+            <Text style={[sectionTitle, { color: theme.ink }]}>3. Optional demo uploads</Text>
+            <Text style={{ color: theme.muted, lineHeight: 20, marginBottom: 14 }}>
               You can skip these now and add them later from the Upload screen.
             </Text>
             <View style={{ gap: 10 }}>
@@ -123,6 +141,7 @@ export default function OnboardingScreen() {
                 detail="Cloudinary OCR ready"
                 icon="card-account-details"
                 active={insurance}
+                accent={theme.accent}
                 onPress={() => setInsurance((v) => !v)}
               />
               <UploadChoice
@@ -130,6 +149,7 @@ export default function OnboardingScreen() {
                 detail="Apple Health, Garmin, Whoop, Oura"
                 icon="heart-pulse"
                 active={healthData}
+                accent={theme.accent}
                 onPress={() => setHealthData((v) => !v)}
               />
             </View>
@@ -138,19 +158,20 @@ export default function OnboardingScreen() {
 
         {isProvider ? (
           <Card>
-            <Text style={sectionTitle}>Provider credentials</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>Provider credentials</Text>
             <View style={{ gap: 10 }}>
-              <Field label="Clinic email" value="frontdesk@bayview.example" />
-              <Field label="Clinic code" value="BAYVIEW-DEMO" />
+              <Field label="Clinic email" value={clinicEmail} onChangeText={setClinicEmail} />
+              <Field label="Clinic code" value={clinicCode} onChangeText={setClinicCode} />
             </View>
           </Card>
         ) : (
           <Card>
-            <Text style={sectionTitle}>Profile</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>Profile</Text>
             <View style={{ gap: 10 }}>
-              <Field label="Name" value="Maria Rivera" />
-              <Field label="Phone" value="+1 (415) 555-4729" />
-              <Field label="Timezone" value="America/Los_Angeles" />
+              <Field label="Name" value={name} onChangeText={setName} />
+              <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              <Field label="Timezone" value={timezone} onChangeText={setTimezone} />
+              <Field label="Emergency contact" value={emergencyContact} onChangeText={setEmergencyContact} />
             </View>
           </Card>
         )}
@@ -175,32 +196,35 @@ function UploadChoice({
   detail,
   icon,
   active,
+  accent,
   onPress,
 }: {
   title: string;
   detail: string;
   icon: "card-account-details" | "heart-pulse";
   active: boolean;
+  accent: string;
   onPress: () => void;
 }) {
+  const { theme } = useAidaTheme();
   return (
     <Pressable onPress={onPress}>
       <View
         style={{
           borderRadius: 16,
           borderWidth: 1,
-          borderColor: active ? colors.teal : colors.line,
+          borderColor: active ? accent : theme.line,
           padding: 14,
           flexDirection: "row",
           alignItems: "center",
           gap: 12,
-          backgroundColor: active ? "#f3fbf9" : "#fff",
+          backgroundColor: active ? `${accent}14` : theme.surface,
         }}
       >
-        <Icon name={icon} size={24} color={active ? colors.teal : colors.muted} />
+        <Icon name={icon} size={24} color={active ? accent : theme.muted} />
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.ink, fontWeight: "900" }}>{title}</Text>
-          <Text style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>
+          <Text style={{ color: theme.ink, fontWeight: "900" }}>{title}</Text>
+          <Text style={{ color: theme.muted, fontSize: 12, marginTop: 3 }}>
             {detail}
           </Text>
         </View>
@@ -211,7 +235,6 @@ function UploadChoice({
 }
 
 const sectionTitle = {
-  color: colors.ink,
   fontSize: 17,
   fontWeight: "900" as const,
   marginBottom: 14,

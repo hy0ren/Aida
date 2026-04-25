@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
   Pressable,
@@ -22,12 +23,102 @@ export const colors = {
   paper: "#fbfbf8",
   wash: "#eff4f1",
   card: "#ffffff",
-  teal: "#0f766e",
+  teal: "#c94f47",
   plum: "#6e3a6e",
   amber: "#d58a41",
   green: "#2f855a",
   red: "#b54735",
 };
+
+export const fonts = {
+  display: "Georgia",
+  body: "Avenir Next",
+  mono: "Courier",
+};
+
+type ModeName = "light" | "dark";
+const RED_ACCENT = "#c94f47";
+
+type ThemeState = {
+  mode: ModeName;
+  language: string;
+  notifications: boolean;
+  calendarSync: boolean;
+  setMode: (mode: ModeName) => void;
+  setLanguage: (language: string) => void;
+  setNotifications: (enabled: boolean) => void;
+  setCalendarSync: (enabled: boolean) => void;
+  theme: {
+    accent: string;
+    ink: string;
+    muted: string;
+    faint: string;
+    line: string;
+    wash: string;
+    card: string;
+    surface: string;
+  };
+};
+
+const ThemeContext = createContext<ThemeState | null>(null);
+
+export function AidaThemeProvider({ children }: { children: ReactNode }) {
+  const [mode, setMode] = useState<ModeName>("light");
+  const [language, setLanguage] = useState("Spanish");
+  const [notifications, setNotifications] = useState(true);
+  const [calendarSync, setCalendarSync] = useState(false);
+
+  const theme = useMemo(() => {
+    const accent = RED_ACCENT;
+    if (mode === "dark") {
+      return {
+        accent,
+        ink: "#f4f4f5",
+        muted: "#a1a1aa",
+        faint: "#71717a",
+        line: "rgba(255,255,255,0.10)",
+        wash: "#18181b",
+        card: "#242428",
+        surface: "#2f3035",
+      };
+    }
+    return {
+      accent,
+      ink: colors.ink,
+      muted: colors.muted,
+      faint: colors.faint,
+      line: colors.line,
+      wash: colors.wash,
+      card: colors.card,
+      surface: "#f8fbfa",
+    };
+  }, [mode]);
+
+  const value = useMemo(
+    () => ({
+      mode,
+      language,
+      notifications,
+      calendarSync,
+      setMode,
+      setLanguage,
+      setNotifications,
+      setCalendarSync,
+      theme,
+    }),
+    [calendarSync, language, mode, notifications, theme],
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export function useAidaTheme() {
+  const value = useContext(ThemeContext);
+  if (!value) {
+    throw new Error("useAidaTheme must be used inside AidaThemeProvider");
+  }
+  return value;
+}
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -54,8 +145,9 @@ export function Screen({
   subtitle?: string;
   action?: ReactNode;
 }) {
+  const { theme } = useAidaTheme();
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.wash }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -63,8 +155,8 @@ export function Screen({
         {(title || subtitle || action) && (
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              {title && <Text style={styles.title}>{title}</Text>}
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              {title && <Text style={[styles.title, { color: theme.ink }]}>{title}</Text>}
+              {subtitle && <Text style={[styles.subtitle, { color: theme.muted }]}>{subtitle}</Text>}
             </View>
             {action}
           </View>
@@ -82,7 +174,18 @@ export function Card({
   children: ReactNode;
   style?: ViewStyle;
 }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  const { theme } = useAidaTheme();
+  return (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.card, borderColor: theme.line },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 export function GlassCard({
@@ -92,22 +195,25 @@ export function GlassCard({
   children: ReactNode;
   style?: ViewStyle;
 }) {
-  return <View style={[styles.glassCard, style]}>{children}</View>;
+  const { theme } = useAidaTheme();
+  return <View style={[styles.glassCard, { backgroundColor: theme.card, borderColor: theme.line }, style]}>{children}</View>;
 }
 
 export function Pill({
   label,
   icon,
-  tone = colors.teal,
+  tone,
 }: {
   label: string;
   icon?: IconName;
   tone?: string;
 }) {
+  const { theme } = useAidaTheme();
+  const pillTone = tone ?? theme.accent;
   return (
-    <View style={[styles.pill, { backgroundColor: `${tone}14` }]}>
-      {icon && <Icon name={icon} size={13} color={tone} />}
-      <Text style={[styles.pillText, { color: tone }]}>{label}</Text>
+    <View style={[styles.pill, { backgroundColor: `${pillTone}18` }]}>
+      {icon && <Icon name={icon} size={13} color={pillTone} />}
+      <Text style={[styles.pillText, { color: pillTone }]}>{label}</Text>
     </View>
   );
 }
@@ -118,7 +224,7 @@ export function PrimaryButton({
   onPress,
   href,
   disabled,
-  tone = colors.teal,
+  tone,
 }: {
   label: string;
   icon?: IconName;
@@ -127,11 +233,13 @@ export function PrimaryButton({
   disabled?: boolean;
   tone?: string;
 }) {
+  const { theme } = useAidaTheme();
+  const buttonTone = tone ?? theme.accent;
   const content = (
     <View
       style={[
         styles.primaryButton,
-        { backgroundColor: disabled ? colors.faint : tone },
+        { backgroundColor: disabled ? theme.faint : buttonTone },
       ]}
     >
       {icon && <Icon name={icon} size={18} color="#fff" />}
@@ -165,10 +273,11 @@ export function SecondaryButton({
   onPress?: () => void;
   href?: string;
 }) {
+  const { theme } = useAidaTheme();
   const content = (
-    <View style={styles.secondaryButton}>
-      {icon && <Icon name={icon} size={18} color={colors.teal} />}
-      <Text style={styles.secondaryButtonText}>{label}</Text>
+    <View style={[styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.line }]}>
+      {icon && <Icon name={icon} size={18} color={theme.accent} />}
+      <Text style={[styles.secondaryButtonText, { color: theme.accent }]}>{label}</Text>
     </View>
   );
 
@@ -196,15 +305,16 @@ export function MetricCard({
   detail: string;
   flagged?: boolean;
 }) {
+  const { theme } = useAidaTheme();
   return (
     <Card style={styles.metricCard}>
       <View style={styles.metricTop}>
-        <Icon name={icon} size={18} color={flagged ? colors.amber : colors.teal} />
+        <Icon name={icon} size={18} color={flagged ? colors.amber : theme.accent} />
         {flagged && <Pill label="Flagged" tone={colors.amber} />}
       </View>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricDetail}>{detail}</Text>
+      <Text style={[styles.metricValue, { color: theme.ink }]}>{value}</Text>
+      <Text style={[styles.metricLabel, { color: theme.ink }]}>{label}</Text>
+      <Text style={[styles.metricDetail, { color: theme.muted }]}>{detail}</Text>
     </Card>
   );
 }
@@ -216,6 +326,7 @@ export function StepDots({
   count: number;
   active: number;
 }) {
+  const { theme } = useAidaTheme();
   return (
     <View style={styles.dots}>
       {Array.from({ length: count }).map((_, index) => (
@@ -223,7 +334,7 @@ export function StepDots({
           key={index}
           style={[
             styles.dot,
-            index <= active && styles.dotActive,
+            index <= active && { backgroundColor: theme.accent },
             index === active && styles.dotWide,
           ]}
         />
@@ -238,12 +349,20 @@ export function Field({
 }: TextInputProps & {
   label: string;
 }) {
+  const { theme } = useAidaTheme();
   return (
     <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
       <TextInput
-        placeholderTextColor="#98a5a1"
-        style={styles.field}
+        placeholderTextColor={theme.faint}
+        style={[
+          styles.field,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.line,
+            color: theme.ink,
+          },
+        ]}
         {...props}
       />
     </View>
@@ -294,15 +413,17 @@ export const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontSize: 32,
-    fontWeight: "800",
+    fontSize: 34,
+    fontWeight: "700",
     letterSpacing: -0.2,
+    fontFamily: fonts.display,
   },
   subtitle: {
     color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
     marginTop: 6,
+    fontFamily: fonts.body,
   },
   card: {
     backgroundColor: colors.card,
@@ -335,6 +456,7 @@ export const styles = StyleSheet.create({
   pillText: {
     fontSize: 12,
     fontWeight: "700",
+    fontFamily: fonts.body,
   },
   primaryButton: {
     minHeight: 54,
@@ -349,6 +471,7 @@ export const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "800",
+    fontFamily: fonts.body,
   },
   secondaryButton: {
     minHeight: 52,
@@ -366,6 +489,7 @@ export const styles = StyleSheet.create({
     color: colors.teal,
     fontSize: 15,
     fontWeight: "800",
+    fontFamily: fonts.body,
   },
   metricCard: {
     flex: 1,
@@ -380,19 +504,22 @@ export const styles = StyleSheet.create({
   metricValue: {
     color: colors.ink,
     fontSize: 30,
-    fontWeight: "900",
+    fontWeight: "700",
+    fontFamily: fonts.display,
   },
   metricLabel: {
     color: colors.ink,
     fontSize: 13,
     fontWeight: "800",
     marginTop: 2,
+    fontFamily: fonts.body,
   },
   metricDetail: {
     color: colors.muted,
     fontSize: 12,
     lineHeight: 17,
     marginTop: 5,
+    fontFamily: fonts.body,
   },
   dots: {
     flexDirection: "row",
@@ -421,6 +548,7 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     textTransform: "uppercase",
     letterSpacing: 0.4,
+    fontFamily: fonts.body,
   },
   field: {
     minHeight: 50,
@@ -432,5 +560,6 @@ export const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 15,
     fontWeight: "600",
+    fontFamily: fonts.body,
   },
 });

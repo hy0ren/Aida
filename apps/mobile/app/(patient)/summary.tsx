@@ -9,10 +9,12 @@ import {
   SecondaryButton,
   colors,
   sampleSummary,
+  useAidaTheme,
 } from "../../components/aida";
 
 export default function SummaryScreen() {
   const [summary, setSummary] = useState(sampleSummary);
+  const { theme, language } = useAidaTheme();
 
   return (
     <Screen
@@ -39,33 +41,33 @@ export default function SummaryScreen() {
         </View>
 
         <Card>
-          <Text style={sectionTitle}>Summary for your doctor</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>Summary for your doctor</Text>
           <TextInput
             multiline
             value={summary}
             onChangeText={setSummary}
             style={{
               minHeight: 170,
-              color: colors.ink,
+              color: theme.ink,
               fontSize: 15,
               lineHeight: 23,
               textAlignVertical: "top",
-              backgroundColor: colors.wash,
+              backgroundColor: theme.surface,
               borderRadius: 16,
               padding: 14,
             }}
           />
-          <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}>
+          <Text style={{ color: theme.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}>
             You can edit this before it is attached to the appointment request.
           </Text>
         </Card>
 
         <Card>
-          <Text style={sectionTitle}>What will be shared</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>What will be shared</Text>
           <View style={{ gap: 8 }}>
             <Pill label="Approved summary" icon="check" />
             <Pill label="Insurance details" icon="card-account-details" tone={colors.plum} />
-            <Pill label="Preferred language: Spanish" icon="translate" tone={colors.amber} />
+            <Pill label={`Preferred language: ${language}`} icon="translate" tone={colors.amber} />
           </View>
         </Card>
 
@@ -79,7 +81,6 @@ export default function SummaryScreen() {
 }
 
 const sectionTitle = {
-  color: colors.ink,
   fontSize: 17,
   fontWeight: "900" as const,
   marginBottom: 12,

@@ -1,20 +1,23 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import {
   Card,
   GlassCard,
   Icon,
   PrimaryButton,
-  SecondaryButton,
   colors,
+  fonts,
+  useAidaTheme,
 } from "../../components/aida";
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const { theme } = useAidaTheme();
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: colors.wash,
+        backgroundColor: theme.wash,
         padding: 22,
         justifyContent: "space-between",
       }}
@@ -26,36 +29,38 @@ export default function LoginScreen() {
               width: 42,
               height: 42,
               borderRadius: 14,
-              backgroundColor: colors.teal,
+              backgroundColor: theme.accent,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <Icon name="triangle" size={22} color="#fff" />
           </View>
-          <Text style={{ color: colors.ink, fontSize: 30, fontWeight: "900" }}>
+          <Text style={{ color: theme.ink, fontSize: 30, fontWeight: "700", fontFamily: fonts.display }}>
             Aida
           </Text>
         </View>
 
         <Text
           style={{
-            color: colors.ink,
+            color: theme.ink,
             fontSize: 42,
             lineHeight: 47,
-            fontWeight: "900",
+            fontWeight: "700",
             marginTop: 34,
             letterSpacing: -0.4,
+            fontFamily: fonts.display,
           }}
         >
           Healthcare, in your language.
         </Text>
         <Text
           style={{
-            color: colors.muted,
+            color: theme.muted,
             fontSize: 16,
             lineHeight: 24,
             marginTop: 16,
+            fontFamily: fonts.body,
           }}
         >
           Upload your health data, approve what gets shared, and let Aida help
@@ -66,23 +71,22 @@ export default function LoginScreen() {
       <GlassCard>
         <View style={{ gap: 12 }}>
           <PrimaryButton
-            href="/(auth)/onboarding"
+            onPress={() => router.push("/(auth)/verify")}
             icon="google"
             label="Continue with Google"
           />
-          <SecondaryButton
-            href="/(auth)/verify"
-            icon="earth"
-            label="Verify identity with World ID"
-          />
+          <Text style={{ color: theme.muted, lineHeight: 20, textAlign: "center" }}>
+            Google sign-in is step one. World ID verification is required next
+            before onboarding unlocks.
+          </Text>
         </View>
 
         <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-          <Card style={{ flex: 1, padding: 13, borderRadius: 16 }}>
+          <View style={{ flex: 1, padding: 13, borderRadius: 16, backgroundColor: theme.surface }}>
             <Icon name="translate" size={20} color={colors.plum} />
             <Text
               style={{
-                color: colors.ink,
+                color: theme.ink,
                 fontSize: 13,
                 fontWeight: "800",
                 marginTop: 8,
@@ -90,12 +94,12 @@ export default function LoginScreen() {
             >
               Multilingual
             </Text>
-          </Card>
-          <Card style={{ flex: 1, padding: 13, borderRadius: 16 }}>
-            <Icon name="shield-check" size={20} color={colors.teal} />
+          </View>
+          <View style={{ flex: 1, padding: 13, borderRadius: 16, backgroundColor: theme.surface }}>
+            <Icon name="shield-check" size={20} color={theme.accent} />
             <Text
               style={{
-                color: colors.ink,
+                color: theme.ink,
                 fontSize: 13,
                 fontWeight: "800",
                 marginTop: 8,
@@ -103,7 +107,7 @@ export default function LoginScreen() {
             >
               Private first
             </Text>
-          </Card>
+          </View>
         </View>
 
         <View
@@ -114,10 +118,10 @@ export default function LoginScreen() {
             marginTop: 20,
           }}
         >
-          <Text style={{ color: colors.muted }}>Clinic staff?</Text>
+          <Text style={{ color: theme.muted }}>Clinic staff?</Text>
           <Link href="/(provider)/dashboard" asChild>
             <Pressable>
-              <Text style={{ color: colors.teal, fontWeight: "800" }}>
+              <Text style={{ color: theme.accent, fontWeight: "800" }}>
                 Login as provider
               </Text>
             </Pressable>

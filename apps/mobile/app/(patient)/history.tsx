@@ -1,7 +1,8 @@
 import { Text, View } from "react-native";
-import { Card, Icon, Pill, Screen, colors, sampleSummary } from "../../components/aida";
+import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme } from "../../components/aida";
 
 export default function HistoryScreen() {
+  const { theme } = useAidaTheme();
   return (
     <Screen
       title="History"
@@ -11,10 +12,10 @@ export default function HistoryScreen() {
         <Card>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
+              <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
                 Bayview Family Medicine
               </Text>
-              <Text style={{ color: colors.muted, marginTop: 4 }}>
+              <Text style={{ color: theme.muted, marginTop: 4 }}>
                 Wed, May 6 at 2:30 PM
               </Text>
             </View>
@@ -28,12 +29,12 @@ export default function HistoryScreen() {
 
         <Card>
           <View style={{ flexDirection: "row", gap: 10 }}>
-            <Icon name="file-document-check" size={23} color={colors.teal} />
+            <Icon name="file-document-check" size={23} color={theme.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+              <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
                 Approved biometric summary
               </Text>
-              <Text style={{ color: colors.muted, lineHeight: 20, marginTop: 6 }}>
+              <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 6 }}>
                 {sampleSummary}
               </Text>
             </View>
@@ -41,7 +42,7 @@ export default function HistoryScreen() {
         </Card>
 
         <Card>
-          <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
             Past visits
           </Text>
           {["Annual checkup", "Pediatric asthma follow-up", "Lab results review"].map(
@@ -52,18 +53,18 @@ export default function HistoryScreen() {
                   paddingTop: 14,
                   marginTop: 14,
                   borderTopWidth: index === 0 ? 0 : 1,
-                  borderTopColor: colors.line,
+                  borderTopColor: theme.line,
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 10,
                 }}
               >
-                <Icon name="clipboard-text-clock-outline" color={colors.muted} />
+                <Icon name="clipboard-text-clock-outline" color={theme.muted} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.ink, fontWeight: "800" }}>{item}</Text>
-                  <Text style={{ color: colors.muted, marginTop: 2 }}>Completed</Text>
+                  <Text style={{ color: theme.ink, fontWeight: "800" }}>{item}</Text>
+                  <Text style={{ color: theme.muted, marginTop: 2 }}>Completed</Text>
                 </View>
-                <Icon name="chevron-right" color={colors.faint} />
+                <Icon name="chevron-right" color={theme.faint} />
               </View>
             ),
           )}

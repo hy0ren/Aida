@@ -7,9 +7,11 @@ import {
   Screen,
   SecondaryButton,
   colors,
+  useAidaTheme,
 } from "../../components/aida";
 
 export default function ConfirmationScreen() {
+  const { theme } = useAidaTheme();
   return (
     <Screen title="You're booked" subtitle="A confirmation was sent to your phone.">
       <View style={{ gap: 16, paddingBottom: 86 }}>
@@ -21,7 +23,7 @@ export default function ConfirmationScreen() {
               borderRadius: 52,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "#e8f7f0",
+              backgroundColor: `${colors.green}18`,
             }}
           >
             <Icon name="check" size={56} color={colors.green} />
@@ -35,18 +37,18 @@ export default function ConfirmationScreen() {
                 width: 54,
                 height: 54,
                 borderRadius: 18,
-                backgroundColor: "#e8f7f3",
+                backgroundColor: `${theme.accent}18`,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Icon name="doctor" size={28} color={colors.teal} />
+              <Icon name="doctor" size={28} color={theme.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
+              <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
                 Dr. Lin Chen
               </Text>
-              <Text style={{ color: colors.muted, marginTop: 3 }}>
+              <Text style={{ color: theme.muted, marginTop: 3 }}>
                 General Practitioner
               </Text>
             </View>
@@ -61,20 +63,20 @@ export default function ConfirmationScreen() {
           </View>
         </Card>
 
-        <Card style={{ backgroundColor: "#f5f7f6" }}>
-          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900" }}>
+        <Card style={{ backgroundColor: theme.surface }}>
+          <Text style={{ color: theme.muted, fontSize: 12, fontWeight: "900" }}>
             SMS RECEIPT
           </Text>
           <View
             style={{
               marginTop: 10,
-              backgroundColor: "#fff",
+              backgroundColor: theme.card,
               borderRadius: 18,
               padding: 14,
               alignSelf: "flex-start",
             }}
           >
-            <Text style={{ color: colors.ink, lineHeight: 21 }}>
+            <Text style={{ color: theme.ink, lineHeight: 21 }}>
               Aida: Cita confirmada con Dr. Lin Chen el miercoles 6 de mayo a
               las 2:30 PM. Responde CANCELAR para anular.
             </Text>
@@ -91,10 +93,11 @@ export default function ConfirmationScreen() {
 }
 
 function Detail({ icon, text }: { icon: "calendar" | "hospital-building" | "map-marker" | "bag-personal"; text: string }) {
+  const { theme } = useAidaTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <Icon name={icon} size={18} color={colors.muted} />
-      <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700", flex: 1 }}>
+      <Icon name={icon} size={18} color={theme.muted} />
+      <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "700", flex: 1 }}>
         {text}
       </Text>
     </View>

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { colors } from "../../components/aida";
+import { useAidaTheme } from "../../components/aida";
 
 type TabIcon = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -11,33 +11,25 @@ function tabIcon(name: TabIcon) {
 }
 
 export default function PatientLayout() {
+  const { theme, mode } = useAidaTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.teal,
-        tabBarInactiveTintColor: "#7f8d89",
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "800",
-          marginTop: 2,
-        },
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.faint,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          position: "absolute",
-          left: 16,
-          right: 16,
-          bottom: 18,
-          height: 74,
-          paddingTop: 10,
-          paddingBottom: 14,
-          borderRadius: 28,
+          height: 76,
+          paddingTop: 8,
+          paddingBottom: 18,
           borderTopWidth: 0,
-          backgroundColor: "rgba(255,255,255,0.94)",
-          shadowColor: "#0f201d",
-          shadowOpacity: 0.12,
-          shadowRadius: 22,
-          shadowOffset: { width: 0, height: 10 },
-          elevation: 8,
+          backgroundColor: mode === "dark" ? "#242428" : "#ffffff",
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: -3 },
+          elevation: 6,
         },
       }}
     >

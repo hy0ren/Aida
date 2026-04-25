@@ -1,27 +1,48 @@
-import { Text, View } from "react-native";
-import { Card, Icon, Pill, Screen, SecondaryButton, colors } from "../../components/aida";
+import { Pressable, Text, View } from "react-native";
+import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
+
+const slots = [
+  { time: "Wed 2:30 PM", status: "Booked", patient: "Maria Rivera" },
+  { time: "Thu 9:00 AM", status: "Open", patient: "Available for agent" },
+  { time: "Fri 11:00 AM", status: "Open", patient: "Available for agent" },
+  { time: "Mon 1:15 PM", status: "Held", patient: "Manual review" },
+];
 
 export default function ScheduleManagementScreen() {
+  const { theme } = useAidaTheme();
   return (
-    <Screen title="Schedule" subtitle="Slots available to the appointment agent.">
-      <View style={{ gap: 14 }}>
-        {["Wed 2:30 PM", "Thu 9:00 AM", "Fri 11:00 AM"].map((slot) => (
-          <Card key={slot}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Icon name="calendar-clock" size={24} color={colors.teal} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
-                  {slot}
-                </Text>
-                <Text style={{ color: colors.muted, marginTop: 3 }}>
-                  Bayview Family Medicine
-                </Text>
+    <Screen title="Schedule" subtitle="Slots the appointment agent can query.">
+      <View style={{ gap: 14, paddingBottom: 86 }}>
+        <Card>
+          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
+            Availability rules
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Pill label="English calls" icon="phone" />
+            <Pill label="Aetna accepted" icon="shield-check" tone={colors.green} />
+            <Pill label="15 min buffer" icon="timer-outline" tone={colors.plum} />
+          </View>
+        </Card>
+
+        {slots.map((slot) => (
+          <Pressable key={slot.time}>
+            <Card>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <Icon name="calendar-clock" size={24} color={theme.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
+                    {slot.time}
+                  </Text>
+                  <Text style={{ color: theme.muted, marginTop: 3 }}>{slot.patient}</Text>
+                </View>
+                <Pill
+                  label={slot.status}
+                  tone={slot.status === "Open" ? colors.green : slot.status === "Held" ? colors.amber : theme.accent}
+                />
               </View>
-              <Pill label="Open" />
-            </View>
-          </Card>
+            </Card>
+          </Pressable>
         ))}
-        <SecondaryButton href="/(provider)/dashboard" icon="arrow-left" label="Back to dashboard" />
       </View>
     </Screen>
   );
