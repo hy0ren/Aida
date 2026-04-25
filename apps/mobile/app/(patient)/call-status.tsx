@@ -72,7 +72,7 @@ export default function CallStatusScreen() {
         backgroundColor: "#18181b",
         padding: 22,
         paddingTop: 72,
-        justifyContent: "space-between",
+        paddingBottom: 94,
       }}
     >
       <View style={{ alignItems: "center" }}>
@@ -119,31 +119,33 @@ export default function CallStatusScreen() {
         </Text>
       </View>
 
-      <View style={{ gap: 10, marginBottom: 22, paddingBottom: 4 }}>
-        {callState === "loading" && (
-          <View style={{ alignItems: "center", gap: 12 }}>
-            <ActivityIndicator color="#eafff9" />
-            <Text style={{ color: "#eafff9", fontWeight: "800" }}>Requesting AI call session...</Text>
-          </View>
-        )}
-        {callState !== "loading" && transcript.slice(0, lineCount).map((line, index) => (
-          <View
-            key={line}
-            style={{
-              alignSelf: index % 2 === 0 ? "flex-start" : "flex-end",
-              maxWidth: "88%",
-              backgroundColor:
-                index % 2 === 0 ? `${theme.accent}40` : "rgba(255,255,255,0.08)",
-              borderRadius: 18,
-              padding: 12,
-            }}
-          >
-            <Text style={{ color: "#eafff9", lineHeight: 20 }}>{line}</Text>
-          </View>
-        ))}
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <View style={{ gap: 10 }}>
+          {callState === "loading" && (
+            <View style={{ alignItems: "center", gap: 12 }}>
+              <ActivityIndicator color="#eafff9" />
+              <Text style={{ color: "#eafff9", fontWeight: "800" }}>Requesting AI call session...</Text>
+            </View>
+          )}
+          {callState !== "loading" && transcript.slice(0, lineCount).map((line, index) => (
+            <View
+              key={line}
+              style={{
+                alignSelf: index % 2 === 0 ? "flex-start" : "flex-end",
+                maxWidth: "88%",
+                backgroundColor:
+                  index % 2 === 0 ? `${theme.accent}40` : "rgba(255,255,255,0.08)",
+                borderRadius: 18,
+                padding: 12,
+              }}
+            >
+              <Text style={{ color: "#eafff9", lineHeight: 20 }}>{line}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      <View style={{ gap: 12, paddingBottom: 28, marginTop: 18 }}>
+      <View style={{ gap: 12, marginTop: 12 }}>
         {callState === "error" && (
           <PrimaryButton
             icon="phone"
@@ -179,9 +181,6 @@ export default function CallStatusScreen() {
             tone="#2f855a"
           />
         )}
-        <View style={{ alignItems: "center" }}>
-          <Icon name="phone-in-talk" size={28} color="#eafff9" />
-        </View>
       </View>
     </View>
   );

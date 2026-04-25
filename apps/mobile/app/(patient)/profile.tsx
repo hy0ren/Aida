@@ -91,22 +91,34 @@ export default function ProfileScreen() {
                 <View
                   style={{
                     minHeight: 34,
-                    paddingHorizontal: language === item ? 10 : 12,
+                    paddingHorizontal: 12,
                     paddingVertical: 8,
                     borderRadius: 999,
                     backgroundColor: language === item ? theme.accent : theme.surface,
-                    flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 6,
+                    position: "relative",
                   }}
                 >
-                  {language === item && <Icon name="check" size={13} color="#fff" />}
+                  {language === item && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        left: 10,
+                        top: 0,
+                        bottom: 0,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon name="check" size={13} color="#fff" />
+                    </View>
+                  )}
                   <Text
                     style={{
                       color: language === item ? "#fff" : theme.ink,
                       fontWeight: "800",
                       fontSize: 12,
+                      paddingLeft: language === item ? 14 : 0,
                     }}
                   >
                     {item}
