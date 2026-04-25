@@ -16,7 +16,7 @@ import {
   type AidaRole,
 } from "../../components/aida";
 import { GlassScanner, type CapturedCard } from "../../components/GlassScanner";
-import { uploadPatientIntake } from "../../lib/api";
+import { updateAuthProfile, uploadPatientIntake } from "../../lib/api";
 
 const languages = [
   "English",
@@ -37,6 +37,7 @@ export default function OnboardingScreen() {
     role: savedRole,
     patientProfile,
     providerProfile,
+    userId,
     language,
     setLanguage,
     completeOnboarding,
@@ -100,20 +101,49 @@ export default function OnboardingScreen() {
       }
     }
 
+    const nextPatientProfile = {
+      name,
+      phone,
+      timezone,
+      emergencyContact,
+      hasInsuranceUpload: insuranceComplete,
+      hasHealthDataUpload: healthData,
+    };
+    const nextProviderProfile = {
+      ...providerProfile,
+      clinicEmail,
+      clinicCode,
+    };
+
+    try {
+      await updateAuthProfile({
+        role,
+        name: isProvider ? nextProviderProfile.clinicName : nextPatientProfile.name,
+        phone: isProvider ? nextProviderProfile.phone : nextPatientProfile.phone,
+        timezone: isProvider ? nextProviderProfile.timezone : nextPatientProfile.timezone,
+        language,
+        onboardingComplete: true,
+        patientProfile: {
+          ...nextPatientProfile,
+          patientId: userId,
+        },
+        providerProfile: {
+          ...nextProviderProfile,
+          providerId: userId,
+          verifiedProvider: isProvider,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Aida could not save your onboarding profile.";
+      Alert.alert("Profile save failed", message);
+      setIsUploading(false);
+      return;
+    }
+
     completeOnboarding({
       role,
-      patientProfile: {
-        name,
-        phone,
-        timezone,
-        emergencyContact,
-        hasInsuranceUpload: insuranceComplete,
-        hasHealthDataUpload: healthData,
-      },
-      providerProfile: {
-        clinicEmail,
-        clinicCode,
-      },
+      patientProfile: nextPatientProfile,
+      providerProfile: nextProviderProfile,
     });
 
     setIsUploading(false);

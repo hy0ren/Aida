@@ -10,8 +10,10 @@ import type {
   SummaryResponse,
   UploadResponse,
 } from "@aida/shared";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+export const TOKEN_KEY = "aida.authToken";
 
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError) return true; // e.g. fetch failed in RN
@@ -37,7 +39,35 @@ function apiUnreachableHelp(): string {
 
 export type AuthResponse = {
   token: string;
-  user: { id: string; email: string; name?: string; role?: string };
+  user: AuthUser;
+};
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  emailNormalized?: string;
+  name?: string;
+  phone?: string;
+  role?: "patient" | "parent" | "provider" | "admin";
+  timezone?: string;
+  onboardingComplete?: boolean;
+  onboardingCompletedAt?: string;
+  accountStatus?: "active" | "pending" | "disabled" | "deleted";
+  language?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  lastLoginAt?: string;
+  passwordUpdatedAt?: string;
+  notificationsEnabled?: boolean;
+  smsEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
+  calendarSyncEnabled?: boolean;
+  themeMode?: "light" | "dark";
+  colorPalette?: string;
+  patientProfile?: Record<string, unknown>;
+  providerProfile?: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export async function authSignup(email: string, password: string, name?: string): Promise<AuthResponse> {
@@ -49,12 +79,30 @@ export async function authLogin(email: string, password: string): Promise<AuthRe
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return apiRequest<T>(path, { method: "POST", body });
+}
+
+export async function apiPut<T>(path: string, body: unknown, authenticated = false): Promise<T> {
+  return apiRequest<T>(path, { method: "PUT", body, authenticated });
+}
+
+async function apiRequest<T>(
+  path: string,
+  options: { method: "GET" | "POST" | "PUT"; body?: unknown; authenticated?: boolean },
+): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  if (options.authenticated) {
+    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/api${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method: options.method,
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
     });
   } catch (err) {
     if (isNetworkError(err)) {
@@ -72,22 +120,19 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}/api${path}`);
-  } catch (err) {
-    if (isNetworkError(err)) {
-      throw new Error(apiUnreachableHelp());
-    }
-    throw err;
-  }
-  const payload = (await res.json().catch(() => null)) as ApiResponse<T> | null;
+  return apiRequest<T>(path, { method: "GET" });
+}
 
-  if (!res.ok || !payload?.ok) {
-    throw new Error(payload?.error ?? `API ${path} failed: ${res.status}`);
-  }
+export async function apiGetAuth<T>(path: string): Promise<T> {
+  return apiRequest<T>(path, { method: "GET", authenticated: true });
+}
 
-  return payload.data as T;
+export function updateAuthProfile(body: Partial<AuthUser>) {
+  return apiPut<{ user: AuthUser }>('/auth/profile', body, true);
+}
+
+export function getAuthProfile() {
+  return apiGetAuth<{ user: AuthUser }>('/auth/profile');
 }
 
 export function uploadPatientIntake(body: {

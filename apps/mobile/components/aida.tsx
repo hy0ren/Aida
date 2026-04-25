@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { demoData } from "@aida/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link } from "expo-router";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
   Pressable,
@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { TOKEN_KEY, updateAuthProfile, type AuthUser } from "../lib/api";
 
 export const colors = {
   ink: "#17211f",
@@ -100,6 +101,8 @@ export function getHomeRouteForRole(role: AidaRole) {
 type ThemeState = {
   isReady: boolean;
   isLoggedIn: boolean;
+  userId?: string;
+  email?: string;
   onboardingComplete: boolean;
   role: AidaRole;
   patientProfile: PatientProfile;
@@ -113,6 +116,7 @@ type ThemeState = {
   login: () => void;
   /** Logged-in session that should skip “Set up Aida” (existing accounts). */
   loginReturningUser: () => void;
+  applyAuthUser: (user: AuthUser) => void;
   logout: () => void;
   completeOnboarding: (state: {
     role: AidaRole;
@@ -143,6 +147,8 @@ const ThemeContext = createContext<ThemeState | null>(null);
 export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState<string | undefined>();
+  const [email, setEmail] = useState<string | undefined>();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [role, setRole] = useState<AidaRole>("patient");
   const [patientProfile, setPatientProfile] = useState<PatientProfile>(defaultPatientProfile);
@@ -152,6 +158,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState("English");
   const [notifications, setNotifications] = useState(true);
   const [calendarSync, setCalendarSync] = useState(false);
+  const remoteSyncReady = useRef(false);
 
   useEffect(() => {
     async function hydrate() {
@@ -161,6 +168,8 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
 
         const saved = JSON.parse(raw) as Partial<{
           isLoggedIn: boolean;
+          userId: string;
+          email: string;
           onboardingComplete: boolean;
           role: AidaRole;
           patientProfile: Partial<PatientProfile>;
@@ -173,6 +182,12 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
         }>;
 
         setIsLoggedIn(Boolean(saved.isLoggedIn));
+        if (typeof saved.userId === "string") {
+          setUserId(saved.userId);
+        }
+        if (typeof saved.email === "string") {
+          setEmail(saved.email);
+        }
         setOnboardingComplete(Boolean(saved.onboardingComplete));
         if (saved.role === "patient" || saved.role === "parent" || saved.role === "provider") {
           setRole(saved.role);
@@ -213,6 +228,8 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
 
     const state = {
       isLoggedIn,
+      userId,
+      email,
       onboardingComplete,
       role,
       patientProfile,
@@ -229,6 +246,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     });
   }, [
     calendarSync,
+    email,
     isLoggedIn,
     isReady,
     language,
@@ -239,6 +257,72 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     patientProfile,
     providerProfile,
     role,
+    userId,
+  ]);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    if (!remoteSyncReady.current) {
+      remoteSyncReady.current = true;
+      return;
+    }
+
+    if (!isLoggedIn || !userId) return;
+
+    const timeout = setTimeout(() => {
+      const isProvider = role === "provider";
+      const topLevelProfile = isProvider
+        ? {
+            name: providerProfile.clinicName,
+            phone: providerProfile.phone,
+            timezone: providerProfile.timezone,
+          }
+        : {
+            name: patientProfile.name,
+            phone: patientProfile.phone,
+            timezone: patientProfile.timezone,
+          };
+
+      void updateAuthProfile({
+        ...topLevelProfile,
+        role,
+        language,
+        onboardingComplete,
+        notificationsEnabled: notifications,
+        smsEnabled: notifications,
+        emailNotificationsEnabled: notifications,
+        calendarSyncEnabled: calendarSync,
+        themeMode: mode,
+        colorPalette: palette,
+        patientProfile: {
+          ...patientProfile,
+          patientId: userId,
+        },
+        providerProfile: {
+          ...providerProfile,
+          providerId: userId,
+          verifiedProvider: isProvider,
+        },
+      }).catch((error) => {
+        console.warn("Unable to sync Aida profile", error);
+      });
+    }, 700);
+
+    return () => clearTimeout(timeout);
+  }, [
+    calendarSync,
+    isLoggedIn,
+    isReady,
+    language,
+    mode,
+    notifications,
+    onboardingComplete,
+    palette,
+    patientProfile,
+    providerProfile,
+    role,
+    userId,
   ]);
 
   const login = useCallback(() => {
@@ -250,12 +334,55 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     setOnboardingComplete(true);
   }, []);
 
+  const applyAuthUser = useCallback((user: AuthUser) => {
+    setUserId(user.id);
+    setEmail(user.email);
+    setIsLoggedIn(true);
+    setOnboardingComplete(Boolean(user.onboardingComplete));
+    if (user.role === "patient" || user.role === "parent" || user.role === "provider") {
+      setRole(user.role);
+    }
+    if (typeof user.language === "string" && user.language.length > 0) {
+      setLanguage(user.language);
+    }
+    if (user.themeMode === "light" || user.themeMode === "dark") {
+      setMode(user.themeMode);
+    }
+    if (user.colorPalette && paletteKeys.includes(user.colorPalette as PaletteName)) {
+      setPalette(user.colorPalette as PaletteName);
+    }
+    if (typeof user.notificationsEnabled === "boolean") {
+      setNotifications(user.notificationsEnabled);
+    }
+    if (typeof user.calendarSyncEnabled === "boolean") {
+      setCalendarSync(user.calendarSyncEnabled);
+    }
+    if (user.patientProfile) {
+      setPatientProfile({ ...defaultPatientProfile, ...(user.patientProfile as Partial<PatientProfile>) });
+    } else if (user.name || user.phone || user.timezone) {
+      setPatientProfile((current) => ({
+        ...current,
+        name: user.name ?? current.name,
+        phone: user.phone ?? current.phone,
+        timezone: user.timezone ?? current.timezone,
+      }));
+    }
+    if (user.providerProfile) {
+      setProviderProfile({ ...defaultProviderProfile, ...(user.providerProfile as Partial<ProviderProfile>) });
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setIsLoggedIn(false);
+    setUserId(undefined);
+    setEmail(undefined);
     setOnboardingComplete(false);
     setRole("patient");
     setPatientProfile(defaultPatientProfile);
     setProviderProfile(defaultProviderProfile);
+    void AsyncStorage.removeItem(TOKEN_KEY).catch((error) => {
+      console.warn("Unable to clear auth token", error);
+    });
   }, []);
 
   const updatePatientProfile = useCallback((profile: Partial<PatientProfile>) => {
@@ -316,6 +443,8 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     () => ({
       isReady,
       isLoggedIn,
+      userId,
+      email,
       onboardingComplete,
       role,
       patientProfile,
@@ -327,6 +456,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       calendarSync,
       login,
       loginReturningUser,
+      applyAuthUser,
       logout,
       completeOnboarding,
       updatePatientProfile,
@@ -339,8 +469,10 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       theme,
     }),
     [
+      applyAuthUser,
       calendarSync,
       completeOnboarding,
+      email,
       isLoggedIn,
       isReady,
       language,
@@ -357,6 +489,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       theme,
       updatePatientProfile,
       updateProviderProfile,
+      userId,
     ],
   );
 

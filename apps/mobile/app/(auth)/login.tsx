@@ -19,15 +19,13 @@ import {
   getHomeRouteForRole,
   useAidaTheme,
 } from "../../components/aida";
-import { authLogin, authSignup } from "../../lib/api";
+import { authLogin, authSignup, TOKEN_KEY } from "../../lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const TOKEN_KEY = "aida.authToken";
 
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const { theme, logout, login, loginReturningUser, role } = useAidaTheme();
+  const { theme, logout, login, applyAuthUser } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
 
@@ -62,14 +60,18 @@ export default function LoginScreen() {
 
       // Persist token
       await AsyncStorage.setItem(TOKEN_KEY, result.token);
+      applyAuthUser(result.user);
 
       // Signup: logged in but onboarding not done until they finish the flow
       if (isSignup) {
         login();
         router.push("/(auth)/verify?mode=signup");
+      } else if (result.user.onboardingComplete) {
+        const nextRole =
+          result.user.role === "provider" || result.user.role === "parent" ? result.user.role : "patient";
+        router.replace(getHomeRouteForRole(nextRole) as never);
       } else {
-        loginReturningUser();
-        router.replace(getHomeRouteForRole(role) as never);
+        router.replace("/(auth)/onboarding");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
