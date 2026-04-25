@@ -3,11 +3,11 @@ import {
   type AppointmentResponse,
   type BiometricMetric,
   type CallSessionResponse,
+  type ConfirmationMessageResponse,
   type FindProvidersResponse,
   type InsuranceProfile,
   type InsuranceVerificationResponse,
   type ProviderOption,
-  type SmsResponse,
   type SummaryResponse,
   type UploadResponse,
 } from '@aida/shared';
@@ -154,12 +154,14 @@ export const demoAppointmentResponse: AppointmentResponse = {
   preparation: ['Bring insurance card and photo ID', 'Bring current medication list', 'Arrive 10 minutes early'],
 };
 
-export const demoSmsResponse: SmsResponse = {
-  smsId: demoData.smsReceipt.id,
+export const demoConfirmationResponse: ConfirmationMessageResponse = {
+  confirmationId: demoData.confirmationReceipt.id,
   patientId: demoData.patient.id,
   appointmentId: demoData.selectedAppointment.id,
-  to: demoData.smsReceipt.toMasked,
+  channel: demoData.confirmationReceipt.channel,
+  to: demoData.confirmationReceipt.toMasked,
   language: demoData.patient.preferredLanguage.label,
   status: 'sent',
-  message: demoData.smsReceipt.body,
+  title: demoData.confirmationReceipt.title,
+  message: demoData.confirmationReceipt.body,
 };

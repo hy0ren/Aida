@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TOKEN_KEY, getAuthProfile, updateAuthProfile, type AuthUser } from "../lib/api";
+import { registerForPushNotificationsAsync } from "../lib/notifications";
 
 export const colors = {
   ink: "#17211f",
@@ -121,6 +122,7 @@ type ThemeState = {
   palette: PaletteName;
   language: string;
   notifications: boolean;
+  expoPushToken?: string;
   calendarSync: boolean;
   /** Sets logged in; use after signup/verify when onboarding is still required. */
   login: () => void;
@@ -167,6 +169,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [palette, setPalette] = useState<PaletteName>(DEFAULT_PALETTE);
   const [language, setLanguage] = useState("English");
   const [notifications, setNotifications] = useState(true);
+  const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
   const [calendarSync, setCalendarSync] = useState(false);
   const remoteSyncReady = useRef(false);
 
@@ -188,6 +191,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
           palette: PaletteName;
           language: string;
           notifications: boolean;
+          expoPushToken: string;
           calendarSync: boolean;
         }>;
 
@@ -213,6 +217,9 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
         }
         if (typeof saved.notifications === "boolean") {
           setNotifications(saved.notifications);
+        }
+        if (typeof saved.expoPushToken === "string") {
+          setExpoPushToken(saved.expoPushToken);
         }
         if (typeof saved.calendarSync === "boolean") {
           setCalendarSync(saved.calendarSync);
@@ -253,6 +260,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       palette,
       language,
       notifications,
+      expoPushToken,
       calendarSync,
     };
 
@@ -262,6 +270,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   }, [
     calendarSync,
     email,
+    expoPushToken,
     isLoggedIn,
     isReady,
     language,
@@ -307,7 +316,8 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
         language,
         onboardingComplete,
         notificationsEnabled: notifications,
-        smsEnabled: notifications,
+        pushNotificationsEnabled: notifications,
+        expoPushToken,
         emailNotificationsEnabled: notifications,
         calendarSyncEnabled: calendarSync,
         themeMode: mode,
@@ -329,6 +339,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeout);
   }, [
     calendarSync,
+    expoPushToken,
     isLoggedIn,
     isReady,
     language,
@@ -371,6 +382,9 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     if (typeof user.notificationsEnabled === "boolean") {
       setNotifications(user.notificationsEnabled);
     }
+    if (typeof user.expoPushToken === "string") {
+      setExpoPushToken(user.expoPushToken);
+    }
     if (typeof user.calendarSyncEnabled === "boolean") {
       setCalendarSync(user.calendarSyncEnabled);
     }
@@ -394,6 +408,32 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       setProviderProfile({ ...defaultProviderProfile, ...(user.providerProfile as Partial<ProviderProfile>) });
     }
   }, []);
+
+  useEffect(() => {
+    if (!isReady || !isLoggedIn || !notifications) return;
+
+    let mounted = true;
+    registerForPushNotificationsAsync()
+      .then((token) => {
+        if (!mounted || !token || token === expoPushToken) return;
+        setExpoPushToken(token);
+        if (userId) {
+          void updateAuthProfile({
+            expoPushToken: token,
+            pushNotificationsEnabled: true,
+          }).catch((error) => {
+            console.warn("Unable to save Expo push token", error);
+          });
+        }
+      })
+      .catch((error) => {
+        console.warn("Unable to register for Expo notifications", error);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [expoPushToken, isLoggedIn, isReady, notifications, userId]);
 
   useEffect(() => {
     if (!isReady || !isLoggedIn || !userId) return;
@@ -486,6 +526,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       palette,
       language,
       notifications,
+      expoPushToken,
       calendarSync,
       login,
       loginReturningUser,
@@ -506,6 +547,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       calendarSync,
       completeOnboarding,
       email,
+      expoPushToken,
       isLoggedIn,
       isReady,
       language,

@@ -11,7 +11,7 @@ The app is built for people who face friction when trying to get care, especiall
 - Supports multilingual patient communication.
 - Helps search for providers and verify insurance.
 - Uses an AI voice agent to help schedule appointments.
-- Sends appointment confirmations by SMS.
+- Sends appointment confirmations through Expo push notifications and an in-app receipt.
 - Gives providers access to approved patient intake summaries.
 
 ## Main User Flow
@@ -22,7 +22,7 @@ The app is built for people who face friction when trying to get care, especiall
 4. Aida generates a health summary.
 5. Patient reviews and approves the summary.
 6. Aida helps find a provider and book an appointment.
-7. Patient receives confirmation by SMS.
+7. Patient receives an Expo confirmation notification and in-app receipt.
 8. Provider sees the approved intake summary.
 
 ## Tech Stack
@@ -33,7 +33,8 @@ The app is built for people who face friction when trying to get care, especiall
 - **AI Summary:** Google Gemini API (Gemini 2.5 Flash)
 - **On-device AI:** ZETIC Melange
 - **Voice Agent:** ElevenLabs
-- **SMS:** Twilio
+- **Calling:** Twilio voice infrastructure + ElevenLabs conversational agent
+- **Messaging:** Expo push notifications
 - **Identity:** World ID
 - **Media Upload:** Cloudinary
 - **Agents:** Fetch.ai Agentverse
@@ -79,6 +80,7 @@ EXPO_PUBLIC_API_URL=
 MONGODB_URI=
 GEMINI_API_KEY=
 ELEVENLABS_API_KEY=
+ELEVENLABS_AGENT_ID=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 CLOUDINARY_CLOUD_NAME=

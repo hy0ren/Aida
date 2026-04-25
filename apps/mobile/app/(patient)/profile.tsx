@@ -171,8 +171,8 @@ export default function ProfileScreen() {
         <Card>
           <SectionTitle>Preferences</SectionTitle>
           <SettingToggle
-            title="SMS notifications"
-            detail="Appointment confirmations and reminders"
+            title="Push confirmations"
+            detail="Appointment receipts and reminders"
             value={notifications}
             onValueChange={setNotifications}
           />

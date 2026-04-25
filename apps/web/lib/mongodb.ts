@@ -15,6 +15,7 @@ let indexPromise: Promise<void> | null = null;
 export const collections = {
   uploads: "uploads",
   appointments: "appointments",
+  confirmationMessages: "confirmationMessages",
 } as const;
 
 export function isMongoConfigured(): boolean {
@@ -24,11 +25,15 @@ export function isMongoConfigured(): boolean {
 async function ensureIndexes(db: Db): Promise<void> {
   const uploads = db.collection(collections.uploads);
   const appointments = db.collection(collections.appointments);
+  const confirmationMessages = db.collection(collections.confirmationMessages);
   await Promise.all([
     uploads.createIndex({ patientId: 1, createdAt: -1 }),
     uploads.createIndex({ uploadId: 1 }, { unique: true }),
     appointments.createIndex({ patientId: 1, createdAt: -1 }),
     appointments.createIndex({ appointmentId: 1 }, { unique: true }),
+    confirmationMessages.createIndex({ patientId: 1, createdAt: -1 }),
+    confirmationMessages.createIndex({ confirmationId: 1 }, { unique: true }),
+    confirmationMessages.createIndex({ appointmentId: 1 }),
   ]);
 }
 

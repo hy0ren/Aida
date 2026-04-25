@@ -5,7 +5,7 @@ This repo has **more than one app**, so you need **more than one env file**. The
 | App / process | File to use | What it’s for |
 |---------------|-------------|----------------|
 | **Expo (phone)** | `apps/mobile/.env` | `EXPO_PUBLIC_*` is **baked in when Metro starts**. Tells the **React Native** app the URL of your API (e.g. `http://10.30.5.243:3000`). |
-| **Next.js (API on your computer)** | `apps/web/.env.local` | **Server-only** secrets: Mongo, Gemini, Twilio, Cloudinary, JWT, etc. Used when you run `npm run dev` in `apps/web`. |
+| **Next.js (API on your computer)** | `apps/web/.env.local` | **Server-only** secrets: Mongo, Gemini, Twilio voice/calling, Cloudinary, JWT, etc. Used when you run `npm run dev` in `apps/web`. |
 | **Vite `apps/web/Aida`** (separate small UI) | `apps/web/Aida/.env` | `VITE_*` for that front-end only (e.g. Cloudinary widget). Not used by the Expo app. |
 
 **Do not** put `EXPO_PUBLIC_API_URL` only in `apps/web/.env.local` and expect the phone app to see it. Next does not bundle the mobile app, and **Expo does not read `web/.env.local`**.

@@ -45,7 +45,9 @@ export async function processCreateAppointment(
         status: data.status,
         preparation: data.preparation,
         callSessionId: body.callSessionId,
+        confirmationSent: false,
         createdAt: new Date(),
+        updatedAt: new Date(),
       });
       return { data, source: "database" };
     }

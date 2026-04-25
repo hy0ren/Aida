@@ -7,7 +7,7 @@ export default function HistoryScreen() {
   return (
     <Screen
       title="History"
-      subtitle="Appointments, summaries, and SMS receipts stay organized here."
+      subtitle="Appointments, summaries, and confirmation receipts stay organized here."
     >
       <View style={{ gap: 14, paddingBottom: 86 }}>
         <Card>
