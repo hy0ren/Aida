@@ -30,7 +30,7 @@ The app is built for people who face friction when trying to get care, especiall
 - **Mobile:** Expo, React Native, Expo Router, NativeWind
 - **Backend:** Next.js API routes
 - **Database:** MongoDB Atlas
-- **AI Summary:** Claude API
+- **AI Summary:** Google Gemini 2.5 Flash-Lite
 - **On-device AI:** ZETIC Melange
 - **Voice Agent:** ElevenLabs
 - **SMS:** Twilio
@@ -77,7 +77,7 @@ Create environment files as needed for the services you use:
 ```bash
 EXPO_PUBLIC_API_URL=
 MONGODB_URI=
-ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
 ELEVENLABS_API_KEY=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
