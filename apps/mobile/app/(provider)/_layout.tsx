@@ -36,7 +36,8 @@ export default function ProviderLayout() {
       <Tabs.Screen name="dashboard" options={{ title: "Today", tabBarIcon: tabIcon("view-dashboard-outline") }} />
       <Tabs.Screen name="patients" options={{ title: "Patients", tabBarIcon: tabIcon("account-group-outline") }} />
       <Tabs.Screen name="schedule" options={{ title: "Schedule", tabBarIcon: tabIcon("calendar-edit") }} />
-      <Tabs.Screen name="history" options={{ title: "History", tabBarIcon: tabIcon("clipboard-text-clock-outline") }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("cog-outline") }} />
+      <Tabs.Screen name="history" options={{ href: null }} />
     </Tabs>
   );
 }

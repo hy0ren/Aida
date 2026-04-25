@@ -1,80 +1,190 @@
-import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
-import { Card, Field, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme } from "../../components/aida";
+import { useMemo, useState } from "react";
+import { Pressable, Text, TextInput, View } from "react-native";
+import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme } from "../../components/aida";
+
+const patients = [
+  {
+    name: "Maria Rivera",
+    age: 38,
+    time: "2:30 PM",
+    reason: "Elevated heart rate",
+    language: "Spanish",
+    status: "Needs review",
+    specialty: "General care",
+    insurance: "Aetna POS II",
+    flagged: true,
+  },
+  {
+    name: "Jae Kim",
+    age: 44,
+    time: "Thu 9:00 AM",
+    reason: "Chest tightness",
+    language: "Korean",
+    status: "Confirmed",
+    specialty: "Cardiology",
+    insurance: "Blue Shield",
+    flagged: true,
+  },
+  {
+    name: "Sofia Alvarez",
+    age: 12,
+    time: "Fri 11:00 AM",
+    reason: "Asthma follow-up",
+    language: "Spanish",
+    status: "Waiting",
+    specialty: "Pediatrics",
+    insurance: "Medi-Cal",
+    flagged: false,
+  },
+  {
+    name: "Noah Patel",
+    age: 51,
+    time: "Completed",
+    reason: "Lab review",
+    language: "English",
+    status: "Completed",
+    specialty: "Internal medicine",
+    insurance: "United",
+    flagged: false,
+  },
+];
+
+const filters = ["All", "Needs review", "Confirmed", "Flagged"];
 
 export default function ProviderPatientsScreen() {
-  const { theme, language } = useAidaTheme();
-  const [notes, setNotes] = useState("Ask about fatigue onset, chest pressure, hydration, and recent illness.");
+  const { theme } = useAidaTheme();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [selected, setSelected] = useState(patients[0]);
+
+  const filtered = useMemo(() => {
+    return patients.filter((patient) => {
+      const matchesQuery = [patient.name, patient.reason, patient.specialty, patient.language]
+        .join(" ")
+        .toLowerCase()
+        .includes(query.toLowerCase());
+      const matchesFilter =
+        filter === "All" ||
+        patient.status === filter ||
+        (filter === "Flagged" && patient.flagged);
+      return matchesQuery && matchesFilter;
+    });
+  }, [filter, query]);
 
   return (
-    <Screen title="Patient intake" subtitle="Approved summary and visit context.">
-      <View style={{ gap: 16, paddingBottom: 86 }}>
-        <Card>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 20, backgroundColor: `${theme.accent}18`, alignItems: "center", justifyContent: "center" }}>
-              <Icon name="account-heart" size={30} color={theme.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.ink, fontSize: 19, fontWeight: "900" }}>Maria Rivera</Text>
-              <Text style={{ color: theme.muted, marginTop: 3 }}>DOB 04/14/1987 - {language} preferred</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            <Pill label="Aetna POS II" icon="card-account-details" />
-            <Pill label="$25 copay" icon="cash" tone={colors.green} />
-            <Pill label="Needs review" icon="alert-circle-outline" tone={colors.amber} />
-          </View>
-        </Card>
+    <Screen title="Patient intake" subtitle="Search patients and review approved summaries.">
+      <View style={{ gap: 14, paddingBottom: 86 }}>
+        <View
+          style={{
+            borderRadius: 18,
+            backgroundColor: theme.surface,
+            borderWidth: 1,
+            borderColor: theme.line,
+            paddingHorizontal: 14,
+            minHeight: 50,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Icon name="magnify" color={theme.muted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search name, reason, language"
+            placeholderTextColor={theme.faint}
+            style={{ flex: 1, color: theme.ink, fontWeight: "700" }}
+          />
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+          {filters.map((item) => (
+            <Pressable key={item} onPress={() => setFilter(item)}>
+              <View
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: filter === item ? theme.accent : theme.surface,
+                  borderWidth: 1,
+                  borderColor: filter === item ? theme.accent : theme.line,
+                }}
+              >
+                <Text
+                  style={{
+                    color: filter === item ? "#fff" : theme.ink,
+                    fontWeight: "900",
+                  }}
+                >
+                  {item}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
 
         <Card>
           <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 10 }}>
-            Patient-approved biometric summary
+            Patients
           </Text>
-          <Text style={{ color: theme.muted, lineHeight: 22 }}>{sampleSummary}</Text>
+          {filtered.map((patient, index) => (
+            <Pressable key={patient.name} onPress={() => setSelected(patient)}>
+              <View
+                style={{
+                  paddingVertical: 12,
+                  borderTopWidth: index === 0 ? 0 : 1,
+                  borderTopColor: theme.line,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 16,
+                    backgroundColor: selected.name === patient.name ? `${theme.accent}18` : theme.surface,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon name="account-heart" color={selected.name === patient.name ? theme.accent : theme.muted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>{patient.name}</Text>
+                  <Text style={{ color: theme.muted, marginTop: 3 }}>{patient.time} - {patient.reason}</Text>
+                </View>
+                <Pill
+                  label={patient.flagged ? "Flagged" : patient.status}
+                  tone={patient.flagged ? colors.amber : patient.status === "Completed" ? colors.faint : theme.accent}
+                />
+              </View>
+            </Pressable>
+          ))}
         </Card>
 
         <Card>
-          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
-            Key metrics
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Icon name="file-document-check" color={theme.accent} size={24} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>{selected.name}</Text>
+              <Text style={{ color: theme.muted, marginTop: 3 }}>
+                Age {selected.age} - {selected.language} - {selected.insurance}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+            <Pill label={selected.specialty} icon="stethoscope" />
+            <Pill label={selected.status} icon="clipboard-text-clock-outline" tone={colors.plum} />
+            {selected.flagged && <Pill label="Vitals flagged" icon="heart-pulse" tone={colors.amber} />}
+          </View>
+          <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900", marginTop: 18 }}>
+            Approved summary
           </Text>
-          <MetricRow label="Resting heart rate" value="78 bpm (+12)" tone={colors.amber} />
-          <MetricRow label="Sleep score" value="65 / 100" tone={colors.amber} />
-          <MetricRow label="HRV" value="42 ms" tone={colors.amber} />
-          <MetricRow label="Blood oxygen" value="97%" tone={colors.green} />
-        </Card>
-
-        <Card>
-          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
-            Provider notes
-          </Text>
-          <TextInput
-            multiline
-            value={notes}
-            onChangeText={setNotes}
-            style={{
-              minHeight: 120,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: theme.line,
-              color: theme.ink,
-              backgroundColor: theme.surface,
-              padding: 14,
-              textAlignVertical: "top",
-              lineHeight: 21,
-            }}
-          />
+          <Text style={{ color: theme.muted, lineHeight: 22, marginTop: 8 }}>{sampleSummary}</Text>
         </Card>
       </View>
     </Screen>
-  );
-}
-
-function MetricRow({ label, value, tone }: { label: string; value: string; tone: string }) {
-  const { theme } = useAidaTheme();
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8 }}>
-      <Text style={{ flex: 1, color: theme.muted, fontWeight: "700" }}>{label}</Text>
-      <Pill label={value} tone={tone} />
-    </View>
   );
 }

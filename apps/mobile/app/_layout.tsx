@@ -12,7 +12,11 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: "#eff4f1" },
         }}
-      />
+      >
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(patient)" />
+        <Stack.Screen name="(provider)" />
+      </Stack>
     </AidaThemeProvider>
   );
 }

@@ -1,11 +1,11 @@
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
-  Card,
-  GlassCard,
+  Field,
   Icon,
   PrimaryButton,
-  colors,
+  SecondaryButton,
   fonts,
   useAidaTheme,
 } from "../../components/aida";
@@ -13,16 +13,26 @@ import {
 export default function LoginScreen() {
   const router = useRouter();
   const { theme } = useAidaTheme();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const isSignup = mode === "signup";
+
+  function continueWithEmail() {
+    router.push("/(auth)/onboarding");
+  }
+
+  function continueWithGoogle() {
+    router.push("/(auth)/onboarding");
+  }
+
   return (
     <View
       style={{
         flex: 1,
         backgroundColor: theme.wash,
         padding: 22,
-        justifyContent: "space-between",
       }}
     >
-      <View style={{ paddingTop: 70 }}>
+      <View style={{ paddingTop: 70, flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <View
             style={{
@@ -36,7 +46,14 @@ export default function LoginScreen() {
           >
             <Icon name="triangle" size={22} color="#fff" />
           </View>
-          <Text style={{ color: theme.ink, fontSize: 30, fontWeight: "700", fontFamily: fonts.display }}>
+          <Text
+            style={{
+              color: theme.ink,
+              fontSize: 30,
+              fontWeight: "700",
+              fontFamily: fonts.display,
+            }}
+          >
             Aida
           </Text>
         </View>
@@ -52,7 +69,7 @@ export default function LoginScreen() {
             fontFamily: fonts.display,
           }}
         >
-          Healthcare, in your language.
+          Healthcare, without borders
         </Text>
         <Text
           style={{
@@ -63,71 +80,64 @@ export default function LoginScreen() {
             fontFamily: fonts.body,
           }}
         >
-          Upload your health data, approve what gets shared, and let Aida help
-          schedule care without the hold music.
+          Let Aida bring you to the professionals you need.
         </Text>
       </View>
 
-      <GlassCard>
-        <View style={{ gap: 12 }}>
-          <PrimaryButton
-            onPress={() => router.push("/(auth)/verify")}
-            icon="google"
-            label="Continue with Google"
-          />
-          <Text style={{ color: theme.muted, lineHeight: 20, textAlign: "center" }}>
-            Google sign-in is step one. World ID verification is required next
-            before onboarding unlocks.
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-          <View style={{ flex: 1, padding: 13, borderRadius: 16, backgroundColor: theme.surface }}>
-            <Icon name="translate" size={20} color={colors.plum} />
-            <Text
-              style={{
-                color: theme.ink,
-                fontSize: 13,
-                fontWeight: "800",
-                marginTop: 8,
-              }}
-            >
-              Multilingual
-            </Text>
-          </View>
-          <View style={{ flex: 1, padding: 13, borderRadius: 16, backgroundColor: theme.surface }}>
-            <Icon name="shield-check" size={20} color={theme.accent} />
-            <Text
-              style={{
-                color: theme.ink,
-                fontSize: 13,
-                fontWeight: "800",
-                marginTop: 8,
-              }}
-            >
-              Private first
-            </Text>
-          </View>
-        </View>
-
+      <View style={{ paddingBottom: 18 }}>
         <View
           style={{
             flexDirection: "row",
-            justifyContent: "center",
-            gap: 6,
-            marginTop: 20,
+            padding: 4,
+            borderRadius: 18,
+            backgroundColor: theme.surface,
+            marginBottom: 16,
           }}
         >
-          <Text style={{ color: theme.muted }}>Clinic staff?</Text>
-          <Link href="/(provider)/dashboard" asChild>
-            <Pressable>
-              <Text style={{ color: theme.accent, fontWeight: "800" }}>
-                Login as provider
+          {(["login", "signup"] as const).map((item) => (
+            <Pressable
+              key={item}
+              onPress={() => setMode(item)}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: mode === item ? theme.card : "transparent",
+              }}
+            >
+              <Text
+                style={{
+                  color: mode === item ? theme.ink : theme.muted,
+                  fontWeight: "900",
+                }}
+              >
+                {item === "login" ? "Login" : "Sign Up"}
               </Text>
             </Pressable>
-          </Link>
+          ))}
         </View>
-      </GlassCard>
+
+        <View style={{ gap: 12 }}>
+          <Field label="Email" value="maria@example.com" keyboardType="email-address" />
+          <Field label="Password" value="password123" secureTextEntry />
+          <PrimaryButton
+            onPress={continueWithEmail}
+            icon={isSignup ? "account-plus" : "login"}
+            label={isSignup ? "Create account" : "Login"}
+          />
+          <SecondaryButton
+            onPress={continueWithGoogle}
+            icon="google"
+            label={isSignup ? "Sign up with Google" : "Login with Google"}
+          />
+        </View>
+
+        <Text style={{ color: theme.muted, marginTop: 18, textAlign: "center", lineHeight: 20 }}>
+          Choose patient, parent, or provider on the next step.
+        </Text>
+      </View>
     </View>
   );
 }

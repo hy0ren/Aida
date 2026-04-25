@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
   return (
     <Screen
       title="Set up Aida"
-      subtitle="A few choices personalize your dashboard, SMS, and scheduling flow."
+      subtitle="Choose your role first, then personalize the dashboard Aida opens for you."
       action={<StepDots count={3} active={2} />}
     >
       <View style={{ gap: 16 }}>
@@ -82,7 +82,7 @@ export default function OnboardingScreen() {
         </Card>
 
         <Card>
-          <Text style={[sectionTitle, { color: theme.ink }]}>2. Who are you using Aida for?</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>2. Select your role</Text>
           <View style={{ gap: 10 }}>
             {[
               {
@@ -181,7 +181,7 @@ export default function OnboardingScreen() {
             icon="arrow-right"
             label={isProvider ? "Enter provider portal" : "Finish onboarding"}
             onPress={() =>
-              router.replace(isProvider ? "/(provider)/dashboard" : "/(patient)/home")
+              router.push(isProvider ? "/(provider)/dashboard" : "/(patient)/home")
             }
           />
           <SecondaryButton href="/(auth)/login" icon="arrow-left" label="Back to login" />

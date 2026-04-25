@@ -117,7 +117,7 @@ export default function VerifyScreen() {
           onPress={begin}
         />
         <Text style={{ color: theme.muted, textAlign: "center", lineHeight: 20 }}>
-          Both Google sign-in and World ID verification are required for patient onboarding.
+          World ID is required for new patient signup. Google is optional.
         </Text>
       </View>
     </View>

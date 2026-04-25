@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import { Pressable, Switch, Text, View } from "react-native";
 import {
   Card,
@@ -24,6 +25,7 @@ const languageOptions = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const {
     mode,
     setMode,
@@ -162,7 +164,11 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        <SecondaryButton href="/(auth)/login" icon="logout" label="Log out" />
+        <SecondaryButton
+          onPress={() => router.dismissTo("/(auth)/login")}
+          icon="logout"
+          label="Log out"
+        />
       </View>
     </Screen>
   );
