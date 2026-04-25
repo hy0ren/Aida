@@ -44,6 +44,12 @@ export function uploadPatientIntake(body: {
   healthComplete: boolean;
   healthSource: string;
   notes: string;
+  files?: Array<{
+    name: string;
+    type: "insurance-front" | "insurance-back" | "health-export" | "lab-report" | "other";
+    /** Data URL (data:image/jpeg;base64,...) or raw base64 */
+    data: string;
+  }>;
 }) {
   return apiPost<UploadResponse>('/upload', body);
 }

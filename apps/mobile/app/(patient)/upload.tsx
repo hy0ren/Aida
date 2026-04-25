@@ -1,7 +1,15 @@
 import { useRouter } from "expo-router";
 import { demoData } from "@aida/shared";
-import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { uploadPatientIntake } from "../../lib/api";
 import {
   Card,
@@ -17,27 +25,197 @@ import {
 
 type HealthMode = "file" | "manual";
 type HealthSource = "Apple Health" | "Garmin" | "Oura" | "Whoop" | "CSV/PDF";
-type UploadStatus = "empty" | "ready" | "uploaded";
+type UploadStage = "empty" | "capturing" | "processing" | "uploaded";
 type ApiState = "idle" | "loading" | "success" | "error";
+
+interface CapturedCard {
+  uri: string;
+  base64: string;
+  width: number;
+  height: number;
+}
 
 const healthSources: HealthSource[] = ["Apple Health", "Garmin", "Oura", "Whoop", "CSV/PDF"];
 const intakeNotes = demoData.healthSummary.notesForAida;
 
 export default function UploadScreen() {
   const router = useRouter();
-  const { theme } = useAidaTheme();
-  const [frontStatus, setFrontStatus] = useState<UploadStatus>("uploaded");
-  const [backStatus, setBackStatus] = useState<UploadStatus>("uploaded");
+  const { theme, mode } = useAidaTheme();
+
+  // Insurance card state
+  const [frontStage, setFrontStage] = useState<UploadStage>("empty");
+  const [backStage, setBackStage] = useState<UploadStage>("empty");
+  const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
+  const [backCard, setBackCard] = useState<CapturedCard | null>(null);
+
+  // Detected insurance details (from OCR or demo)
+  const [detectedInsurance, setDetectedInsurance] = useState({
+    carrier: demoData.insurance.carrier,
+    plan: demoData.insurance.plan,
+    memberId: demoData.insurance.memberId,
+    groupNumber: demoData.insurance.groupNumber,
+  });
+
+  // Health data state
   const [healthMode, setHealthMode] = useState<HealthMode>("file");
   const [healthSource, setHealthSource] = useState<HealthSource>("Apple Health");
   const [healthUploaded, setHealthUploaded] = useState(true);
   const [manualEntry, setManualEntry] = useState(false);
+
+  // Upload state
   const [uploadState, setUploadState] = useState<ApiState>("idle");
   const [uploadMessage, setUploadMessage] = useState("Ready to generate a clinician-ready summary.");
 
-  const insuranceComplete = frontStatus === "uploaded" && backStatus === "uploaded";
+  const insuranceComplete = frontStage === "uploaded" && backStage === "uploaded";
   const healthComplete = healthUploaded || manualEntry;
   const canGenerate = insuranceComplete && healthComplete;
+
+  // ── Image capture helpers ──────────────────────────────────
+  const requestPermissions = useCallback(async () => {
+    const camera = await ImagePicker.requestCameraPermissionsAsync();
+    const media = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (camera.status !== "granted" || media.status !== "granted") {
+      Alert.alert(
+        "Permissions required",
+        "Aida needs camera and photo library access to photograph your insurance card.",
+        [{ text: "OK" }],
+      );
+      return false;
+    }
+    return true;
+  }, []);
+
+  const captureImage = useCallback(
+    async (
+      source: "camera" | "library",
+      side: "front" | "back",
+    ) => {
+      const ok = await requestPermissions();
+      if (!ok) return;
+
+      const setStage = side === "front" ? setFrontStage : setBackStage;
+      const setCard = side === "front" ? setFrontCard : setBackCard;
+
+      setStage("capturing");
+
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [16, 10], // insurance card aspect
+        quality: 0.85,
+        base64: true,
+      };
+
+      let result: ImagePicker.ImagePickerResult;
+      if (source === "camera") {
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      if (result.canceled || !result.assets?.[0]) {
+        setStage("empty");
+        return;
+      }
+
+      const asset = result.assets[0];
+      const base64Data = asset.base64 ?? "";
+
+      if (!base64Data) {
+        Alert.alert("Error", "Could not read the selected image.");
+        setStage("empty");
+        return;
+      }
+
+      setStage("processing");
+
+      // Simulate brief OCR processing delay for UX continuity
+      await new Promise((r) => setTimeout(r, 1200));
+
+      setCard({
+        uri: asset.uri,
+        base64: base64Data,
+        width: asset.width ?? 800,
+        height: asset.height ?? 500,
+      });
+      setStage("uploaded");
+    },
+    [requestPermissions],
+  );
+
+  const showCaptureOptions = useCallback(
+    (side: "front" | "back") => {
+      Alert.alert(
+        `${side === "front" ? "Front" : "Back"} of insurance card`,
+        "Take a clear photo or select from your library.",
+        [
+          { text: "Take photo", onPress: () => captureImage("camera", side) },
+          { text: "Choose from library", onPress: () => captureImage("library", side) },
+          { text: "Cancel", style: "cancel" },
+        ],
+      );
+    },
+    [captureImage],
+  );
+
+  // ── Upload handler ─────────────────────────────────────────
+  const handleUpload = async () => {
+    if (!canGenerate || uploadState === "loading") return;
+
+    setUploadState("loading");
+    setUploadMessage("Uploading intake packet and processing securely…");
+
+    // Build the files array with base64 data
+    const files: Array<{
+      name: string;
+      type: "insurance-front" | "insurance-back" | "health-export" | "lab-report" | "other";
+      data: string;
+    }> = [];
+
+    if (frontCard?.base64) {
+      files.push({
+        name: "insurance-card-front.jpg",
+        type: "insurance-front",
+        data: `data:image/jpeg;base64,${frontCard.base64}`,
+      });
+    }
+    if (backCard?.base64) {
+      files.push({
+        name: "insurance-card-back.jpg",
+        type: "insurance-back",
+        data: `data:image/jpeg;base64,${backCard.base64}`,
+      });
+    }
+
+    try {
+      const response = await uploadPatientIntake({
+        insuranceComplete,
+        healthComplete,
+        healthSource,
+        notes: intakeNotes,
+        files: files.length > 0 ? files : undefined,
+      });
+
+      // Update detected insurance from the response
+      if (response.insurance) {
+        setDetectedInsurance({
+          carrier: response.insurance.carrier ?? detectedInsurance.carrier,
+          plan: response.insurance.plan ?? detectedInsurance.plan,
+          memberId: response.insurance.memberId ?? detectedInsurance.memberId,
+          groupNumber: response.insurance.groupNumber ?? detectedInsurance.groupNumber,
+        });
+      }
+
+      setUploadState("success");
+      setUploadMessage(
+        `${response.files.length} files processed. ${response.insurance.carrier} ${response.insurance.plan} detected.`,
+      );
+      setTimeout(() => router.push("/(patient)/summary"), 650);
+    } catch (error) {
+      setUploadState("error");
+      setUploadMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
+    }
+  };
 
   const reviewItems = useMemo(
     () => [
@@ -59,31 +237,6 @@ export default function UploadScreen() {
     ],
     [healthComplete, insuranceComplete],
   );
-
-  const handleUpload = async () => {
-    if (!canGenerate || uploadState === "loading") return;
-
-    setUploadState("loading");
-    setUploadMessage("Uploading intake packet and processing mock OCR.");
-
-    try {
-      const response = await uploadPatientIntake({
-        insuranceComplete,
-        healthComplete,
-        healthSource,
-        notes: intakeNotes,
-      });
-
-      setUploadState("success");
-      setUploadMessage(
-        `${response.files.length} files processed. ${response.insurance.carrier} ${response.insurance.plan} detected.`,
-      );
-      setTimeout(() => router.push("/(patient)/summary"), 650);
-    } catch (error) {
-      setUploadState("error");
-      setUploadMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
-    }
-  };
 
   return (
     <Screen
@@ -118,17 +271,27 @@ export default function UploadScreen() {
             complete={insuranceComplete}
           />
           <View style={{ gap: 10 }}>
-            <UploadDropzone
+            <InsuranceDropzone
               label="Front of card"
               detail="Name, plan, member ID"
-              status={frontStatus}
-              onPress={() => setFrontStatus(frontStatus === "uploaded" ? "empty" : "uploaded")}
+              stage={frontStage}
+              imageUri={frontCard?.uri}
+              onCapture={() => showCaptureOptions("front")}
+              onRemove={() => {
+                setFrontStage("empty");
+                setFrontCard(null);
+              }}
             />
-            <UploadDropzone
+            <InsuranceDropzone
               label="Back of card"
               detail="Claims phone and payer details"
-              status={backStatus}
-              onPress={() => setBackStatus(backStatus === "uploaded" ? "empty" : "uploaded")}
+              stage={backStage}
+              imageUri={backCard?.uri}
+              onCapture={() => showCaptureOptions("back")}
+              onRemove={() => {
+                setBackStage("empty");
+                setBackCard(null);
+              }}
             />
           </View>
 
@@ -138,10 +301,10 @@ export default function UploadScreen() {
               <Pill label={insuranceComplete ? "Verified format" : "Draft"} icon="text-recognition" />
             </View>
             <View style={{ gap: 10, marginTop: 12 }}>
-              <Field label="Carrier" value={demoData.insurance.carrier} />
-              <Field label="Plan" value={demoData.insurance.plan} />
-              <Field label="Member ID" value={demoData.insurance.memberId} />
-              <Field label="Group number" value={demoData.insurance.groupNumber} />
+              <Field label="Carrier" value={detectedInsurance.carrier} />
+              <Field label="Plan" value={detectedInsurance.plan} />
+              <Field label="Member ID" value={detectedInsurance.memberId} />
+              <Field label="Group number" value={detectedInsurance.groupNumber} />
             </View>
           </View>
         </Card>
@@ -280,7 +443,7 @@ export default function UploadScreen() {
             icon="creation"
             label={
               uploadState === "loading"
-                ? "Uploading..."
+                ? "Uploading…"
                 : canGenerate
                   ? "Generate summary"
                   : "Complete required uploads"
@@ -293,6 +456,125 @@ export default function UploadScreen() {
     </Screen>
   );
 }
+
+// ─────────────────────────────────────────────────────────────
+// Insurance card dropzone with real image preview
+// ─────────────────────────────────────────────────────────────
+function InsuranceDropzone({
+  label,
+  detail,
+  stage,
+  imageUri,
+  onCapture,
+  onRemove,
+}: {
+  label: string;
+  detail: string;
+  stage: UploadStage;
+  imageUri?: string;
+  onCapture: () => void;
+  onRemove: () => void;
+}) {
+  const { theme, mode } = useAidaTheme();
+  const isProcessing = stage === "processing";
+  const isUploaded = stage === "uploaded";
+  const isCapturing = stage === "capturing";
+
+  return (
+    <Pressable
+      onPress={isUploaded ? onRemove : onCapture}
+      style={[
+        styles.dropzone,
+        {
+          borderColor: isUploaded ? theme.accent : isProcessing ? colors.amber : theme.line,
+          backgroundColor: isUploaded
+            ? `${theme.accent}10`
+            : isProcessing
+              ? `${colors.amber}08`
+              : theme.surface,
+          overflow: "hidden",
+        },
+      ]}
+    >
+      {/* Show captured image preview */}
+      {imageUri && (isUploaded || isProcessing) && (
+        <View style={{ width: 64, height: 40, borderRadius: 8, overflow: "hidden", marginRight: 4 }}>
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: 64, height: 40 }}
+            resizeMode="cover"
+          />
+          {isProcessing && (
+            <View
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundColor: "rgba(0,0,0,0.3)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          )}
+          {isUploaded && (
+            <View
+              style={{
+                position: "absolute",
+                top: 2,
+                right: 2,
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: theme.accent,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon name="check" size={12} color="#fff" />
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Icon when no image yet */}
+      {!imageUri && (
+        <View style={[styles.uploadIcon, { backgroundColor: isCapturing ? `${theme.accent}20` : theme.card }]}>
+          {isCapturing ? (
+            <ActivityIndicator size="small" color={theme.accent} />
+          ) : (
+            <Icon name="camera-plus" size={22} color={theme.accent} />
+          )}
+        </View>
+      )}
+
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900" }}>{label}</Text>
+        <Text style={{ color: theme.muted, lineHeight: 19, marginTop: 3 }}>
+          {isProcessing
+            ? "Reading card with OCR…"
+            : isUploaded
+              ? "Captured — tap to replace"
+              : isCapturing
+                ? "Opening camera…"
+                : detail}
+        </Text>
+      </View>
+
+      {isProcessing && <ActivityIndicator size="small" color={colors.amber} />}
+      {isUploaded && (
+        <Text style={{ color: theme.accent, fontWeight: "900" }}>Replace</Text>
+      )}
+      {stage === "empty" && (
+        <Text style={{ color: theme.accent, fontWeight: "900" }}>Add</Text>
+      )}
+    </Pressable>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reusable sub-components (unchanged logic, lightly cleaned)
+// ─────────────────────────────────────────────────────────────
 
 function StatusCard({ state, message }: { state: ApiState; message: string }) {
   const { theme } = useAidaTheme();
@@ -359,7 +641,7 @@ function UploadDropzone({
 }: {
   label: string;
   detail: string;
-  status: UploadStatus;
+  status: "empty" | "ready" | "uploaded";
   onPress: () => void;
 }) {
   const { theme } = useAidaTheme();

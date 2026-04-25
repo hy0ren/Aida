@@ -29,7 +29,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Aida needs your camera to photograph your insurance card.",
+          "photosPermission": "Aida needs photo library access to select insurance card images."
+        }
+      ]
     ]
   }
 }

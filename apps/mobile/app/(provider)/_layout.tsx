@@ -24,20 +24,24 @@ export default function ProviderLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        header: () => null,
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.faint,
         tabBarShowLabel: false,
         tabBarStyle: {
-          height: 76,
-          paddingTop: 8,
-          paddingBottom: 18,
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 70,
+          paddingTop: 0,
+          paddingBottom: 20,
           borderTopWidth: 0,
+          borderTopColor: "transparent",
           backgroundColor: mode === "dark" ? "#242428" : "#ffffff",
-          shadowColor: "#000",
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: -3 },
-          elevation: 6,
+          shadowColor: "transparent",
+          shadowOpacity: 0,
+          elevation: 0,
         },
       }}
     >
