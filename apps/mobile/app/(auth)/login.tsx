@@ -16,6 +16,7 @@ import {
   PrimaryButton,
   SecondaryButton,
   fonts,
+  getHomeRouteForRole,
   useAidaTheme,
 } from "../../components/aida";
 import { authLogin, authSignup } from "../../lib/api";
@@ -26,7 +27,7 @@ const TOKEN_KEY = "aida.authToken";
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const { theme, logout, login } = useAidaTheme();
+  const { theme, logout, login, loginReturningUser, role } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
 
@@ -62,11 +63,14 @@ export default function LoginScreen() {
       // Persist token
       await AsyncStorage.setItem(TOKEN_KEY, result.token);
 
-      // Update local auth state
-      login();
-
-      // Navigate to verify → onboarding (signup) or home (login)
-      router.push("/(auth)/verify");
+      // Signup: logged in but onboarding not done until they finish the flow
+      if (isSignup) {
+        login();
+        router.push("/(auth)/verify?mode=signup");
+      } else {
+        loginReturningUser();
+        router.replace(getHomeRouteForRole(role) as never);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       Alert.alert(isSignup ? "Sign up failed" : "Login failed", message);

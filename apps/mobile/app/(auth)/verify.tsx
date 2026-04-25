@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
@@ -13,8 +13,9 @@ import {
 
 export default function VerifyScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const [stage, setStage] = useState<"ready" | "scanning" | "done">("ready");
-  const { login, onboardingComplete, role, theme } = useAidaTheme();
+  const { login, role, theme } = useAidaTheme();
 
   function begin() {
     setStage("scanning");
@@ -23,7 +24,7 @@ export default function VerifyScreen() {
       login();
       setTimeout(() => {
         router.replace(
-          onboardingComplete ? (getHomeRouteForRole(role) as never) : "/(auth)/onboarding",
+          params.mode === "signup" ? "/(auth)/onboarding" : (getHomeRouteForRole(role) as never),
         );
       }, 700);
     }, 1300);

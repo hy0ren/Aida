@@ -109,7 +109,10 @@ type ThemeState = {
   language: string;
   notifications: boolean;
   calendarSync: boolean;
+  /** Sets logged in; use after signup/verify when onboarding is still required. */
   login: () => void;
+  /** Logged-in session that should skip “Set up Aida” (existing accounts). */
+  loginReturningUser: () => void;
   logout: () => void;
   completeOnboarding: (state: {
     role: AidaRole;
@@ -242,6 +245,11 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(true);
   }, []);
 
+  const loginReturningUser = useCallback(() => {
+    setIsLoggedIn(true);
+    setOnboardingComplete(true);
+  }, []);
+
   const logout = useCallback(() => {
     setIsLoggedIn(false);
     setOnboardingComplete(false);
@@ -318,6 +326,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       notifications,
       calendarSync,
       login,
+      loginReturningUser,
       logout,
       completeOnboarding,
       updatePatientProfile,
@@ -336,6 +345,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       isReady,
       language,
       login,
+      loginReturningUser,
       logout,
       mode,
       notifications,
