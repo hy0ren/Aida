@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@aida/shared": "file:../../packages/shared",
-    "@google/genai": "^1.50.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "elevenlabs": "^1.59.0",
