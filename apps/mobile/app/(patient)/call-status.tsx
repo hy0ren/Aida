@@ -2,25 +2,17 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
+import { demoData } from "@aida/shared";
 import { Icon, PrimaryButton, colors, useAidaTheme } from "../../components/aida";
 
-const transcript = [
-  "Aida: Hi, I am calling on behalf of Maria Rivera to schedule a visit.",
-  "Clinic: What insurance and reason for visit?",
-  "Aida: Aetna Choice POS II. Elevated resting heart rate and fatigue for three days.",
-  "Clinic: Dr. Chen has Wednesday at 2:30 PM.",
-  "Aida: That works. Please book it.",
-];
+const transcript = demoData.providerIntake.callTranscript;
 
 export default function CallStatusScreen() {
   const router = useRouter();
   const { language } = useAidaTheme();
   const [stage, setStage] = useState(0);
   const [lineCount, setLineCount] = useState(1);
-  const stages = useMemo(
-    () => ["Calling clinic", "Connected", "Verifying insurance", "Confirmed"],
-    [],
-  );
+  const stages = useMemo(() => demoData.providerIntake.callStages, []);
 
   useEffect(() => {
     if (stage < stages.length - 1) {
@@ -50,7 +42,7 @@ export default function CallStatusScreen() {
     >
       <View style={{ alignItems: "center" }}>
         <Text style={{ color: "#a1a1aa", fontSize: 12, fontWeight: "800" }}>
-          BAYVIEW FAMILY MEDICINE
+          {demoData.providers[0].name.toUpperCase()}
         </Text>
         <Text
           style={{

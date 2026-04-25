@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { demoData } from "@aida/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -61,20 +62,20 @@ const RED_ACCENT = "#c94f47";
 const STORAGE_KEY = "aida.demoState.v1";
 
 const defaultPatientProfile: PatientProfile = {
-  name: "Maria Rivera",
-  phone: "+1 (415) 555-4729",
-  timezone: "America/Los_Angeles",
-  emergencyContact: "Ana Rivera",
+  name: demoData.patient.name,
+  phone: demoData.patient.phone,
+  timezone: demoData.patient.timezone,
+  emergencyContact: demoData.patient.emergencyContact,
   hasInsuranceUpload: false,
   hasHealthDataUpload: false,
 };
 
 const defaultProviderProfile: ProviderProfile = {
-  clinicName: "Bayview Family Medicine",
-  clinicEmail: "frontdesk@bayview.example",
-  clinicCode: "BAYVIEW-DEMO",
-  phone: "+1 (415) 555-0184",
-  timezone: "America/Los_Angeles",
+  clinicName: demoData.providers[0].name,
+  clinicEmail: demoData.providerIntake.clinicEmail,
+  clinicCode: demoData.providerIntake.clinicCode,
+  phone: demoData.providers[0].phone,
+  timezone: demoData.patient.timezone,
 };
 
 export function getHomeRouteForRole(role: AidaRole) {
@@ -127,7 +128,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [patientProfile, setPatientProfile] = useState<PatientProfile>(defaultPatientProfile);
   const [providerProfile, setProviderProfile] = useState<ProviderProfile>(defaultProviderProfile);
   const [mode, setMode] = useState<ModeName>("light");
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState(demoData.patient.preferredLanguage.label);
   const [notifications, setNotifications] = useState(true);
   const [calendarSync, setCalendarSync] = useState(false);
 
@@ -577,32 +578,15 @@ export function Field({
   );
 }
 
-export const sampleSummary =
-  "Your resting heart rate has been elevated for three days, while sleep quality and HRV are trending lower. This can happen with stress, illness, or cardiovascular strain. Share fatigue, dizziness, chest tightness, or shortness of breath with your doctor.";
+export const sampleSummary = demoData.healthSummary.approvedSummary;
 
-export const clinics = [
-  {
-    name: "Bayview Family Medicine",
-    doctor: "Dr. Lin Chen",
-    distance: "0.4 mi",
-    next: "Wed 2:30 PM",
-    network: "In-network",
-  },
-  {
-    name: "Mission Heart & Vascular",
-    doctor: "Dr. Ruth Okonkwo",
-    distance: "1.1 mi",
-    next: "Thu 9:00 AM",
-    network: "In-network",
-  },
-  {
-    name: "Sunset Internal Medicine",
-    doctor: "Dr. Paula Vasquez",
-    distance: "2.0 mi",
-    next: "Fri 11:00 AM",
-    network: "Review plan",
-  },
-];
+export const clinics = demoData.providers.map((provider) => ({
+  name: provider.name,
+  doctor: provider.doctor,
+  distance: provider.distance,
+  next: provider.nextAvailable,
+  network: provider.network,
+}));
 
 export const styles = StyleSheet.create({
   safe: {

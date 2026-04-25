@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
+import { demoData } from "@aida/shared";
 import {
   Card,
   MetricCard,
@@ -15,6 +16,7 @@ import {
 export default function SummaryScreen() {
   const [summary, setSummary] = useState(sampleSummary);
   const { theme, language } = useAidaTheme();
+  const flaggedMetrics = demoData.biometricMetrics.filter((metric) => metric.status === "attention");
 
   return (
     <Screen
@@ -26,16 +28,16 @@ export default function SummaryScreen() {
         <View style={{ flexDirection: "row", gap: 10 }}>
           <MetricCard
             icon="heart"
-            label="Resting HR"
-            value="78"
-            detail="+12 above normal"
+            label={flaggedMetrics[0].shortLabel}
+            value={flaggedMetrics[0].value}
+            detail={flaggedMetrics[0].summaryDetail}
             flagged
           />
           <MetricCard
             icon="sleep"
-            label="Sleep"
-            value="65"
-            detail="Lower than usual"
+            label={flaggedMetrics[1].shortLabel}
+            value={flaggedMetrics[1].value}
+            detail={flaggedMetrics[1].summaryDetail}
             flagged
           />
         </View>
@@ -68,6 +70,7 @@ export default function SummaryScreen() {
             <Pill label="Approved summary" icon="check" />
             <Pill label="Insurance details" icon="card-account-details" tone={colors.plum} />
             <Pill label={`Preferred language: ${language}`} icon="translate" tone={colors.amber} />
+            <Pill label={demoData.selectedAppointment.reason} icon="stethoscope" tone={colors.green} />
           </View>
         </Card>
 

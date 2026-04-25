@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import { demoData } from "@aida/shared";
 import {
   Card,
   Icon,
@@ -23,55 +24,31 @@ const todaysMetrics: {
   detail: string;
   tone: MetricTone;
   wide?: boolean;
-}[] = [
-  {
-    icon: "heart-pulse",
-    label: "Resting heart rate",
-    value: "78",
-    unit: "bpm",
-    detail: "+12 above your usual morning range",
-    tone: "attention",
-  },
-  {
-    icon: "sleep",
-    label: "Sleep score",
-    value: "65",
-    unit: "/100",
-    detail: "Lower than your 7-day average",
-    tone: "attention",
-  },
-  {
-    icon: "chart-bell-curve",
-    label: "HRV",
-    value: "42",
-    unit: "ms",
-    detail: "Down 18% from your baseline",
-    tone: "attention",
-  },
-  {
-    icon: "shoe-print",
-    label: "Steps",
-    value: "5,240",
-    detail: "On track for your weekday goal",
-    tone: "stable",
-  },
-  {
-    icon: "lungs",
-    label: "Blood oxygen",
-    value: "97",
-    unit: "%",
-    detail: "Within your normal range",
-    tone: "stable",
-    wide: true,
-  },
-];
+}[] = demoData.biometricMetrics.map((metric) => ({
+  icon:
+    metric.id === "resting-heart-rate"
+      ? "heart-pulse"
+      : metric.id === "sleep-score"
+        ? "sleep"
+        : metric.id === "heart-rate-variability"
+          ? "chart-bell-curve"
+          : metric.id === "steps"
+            ? "shoe-print"
+            : "lungs",
+  label: metric.label,
+  value: metric.value,
+  unit: metric.unit,
+  detail: metric.detail,
+  tone: metric.status,
+  wide: metric.wide,
+}));
 
 export default function HomeScreen() {
   const { theme, mode, language } = useAidaTheme();
   return (
     <Screen
       title="Biometrics"
-      subtitle="Good morning, Maria. Your recent data is ready for review."
+      subtitle={`Good morning, ${demoData.patient.name.split(" ")[0]}. Your recent data is ready for review.`}
       action={<Pill label={language} icon="translate" tone={colors.plum} />}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
@@ -90,16 +67,16 @@ export default function HomeScreen() {
                   lineHeight: 33,
                 }}
               >
-                3 vitals need attention
+                {demoData.healthSummary.headline}
               </Text>
               <Text style={{ color: "#d9e6e2", fontSize: 14, lineHeight: 21, marginTop: 8 }}>
-                Resting heart rate, sleep score, and HRV changed from your normal range.
+                {demoData.healthSummary.detail}
               </Text>
             </View>
             <Icon name="heart-pulse" size={44} color="#d7fff3" />
           </View>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-            <Pill label="Last sync: Today" icon="sync" tone="#d7fff3" />
+            <Pill label={`Last sync: ${demoData.healthSummary.lastSyncLabel}`} icon="sync" tone="#d7fff3" />
             <Pill label="On-device" icon="shield-check" tone="#d7fff3" />
           </View>
         </Card>
@@ -128,13 +105,13 @@ export default function HomeScreen() {
                 Next appointment
               </Text>
               <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>
-                Dr. Lin Chen
+                {demoData.providers[0].doctor}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 4 }}>
-                Wed, May 6 at 2:30 PM
+                {demoData.selectedAppointment.displayDateTime}
               </Text>
             </View>
-            <Pill label="Confirmed" icon="check" />
+            <Pill label={demoData.selectedAppointment.status} icon="check" />
           </View>
         </Card>
 

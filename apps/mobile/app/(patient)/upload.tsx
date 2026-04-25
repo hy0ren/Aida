@@ -1,5 +1,7 @@
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { uploadPatientIntake } from "../../lib/api";
 import {
   Card,
   Field,
@@ -14,30 +16,27 @@ import {
 
 type HealthMode = "file" | "manual";
 type HealthSource = "Apple Health" | "Garmin" | "Oura" | "Whoop" | "CSV/PDF";
-type UploadStatus = "empty" | "selected" | "processing" | "complete";
+type UploadStatus = "empty" | "ready" | "uploaded";
+type ApiState = "idle" | "loading" | "success" | "error";
 
 const healthSources: HealthSource[] = ["Apple Health", "Garmin", "Oura", "Whoop", "CSV/PDF"];
-
-const nextStatus: Record<UploadStatus, UploadStatus> = {
-  empty: "selected",
-  selected: "processing",
-  processing: "complete",
-  complete: "empty",
-};
+const intakeNotes =
+  "I have felt tired for three days and noticed my heart rate staying higher than usual. Prefer Spanish-speaking clinic staff if available.";
 
 export default function UploadScreen() {
+  const router = useRouter();
   const { theme } = useAidaTheme();
-  const [frontStatus, setFrontStatus] = useState<UploadStatus>("complete");
-  const [backStatus, setBackStatus] = useState<UploadStatus>("empty");
-  const [wearableStatus, setWearableStatus] = useState<UploadStatus>("selected");
-  const [labStatus, setLabStatus] = useState<UploadStatus>("empty");
+  const [frontStatus, setFrontStatus] = useState<UploadStatus>("uploaded");
+  const [backStatus, setBackStatus] = useState<UploadStatus>("uploaded");
   const [healthMode, setHealthMode] = useState<HealthMode>("file");
   const [healthSource, setHealthSource] = useState<HealthSource>("Apple Health");
+  const [healthUploaded, setHealthUploaded] = useState(true);
   const [manualEntry, setManualEntry] = useState(false);
+  const [uploadState, setUploadState] = useState<ApiState>("idle");
+  const [uploadMessage, setUploadMessage] = useState("Ready to generate a clinician-ready summary.");
 
-  const insuranceComplete = frontStatus === "complete" && backStatus === "complete";
-  const healthFileComplete = wearableStatus === "complete" || labStatus === "complete";
-  const healthComplete = healthFileComplete || manualEntry;
+  const insuranceComplete = frontStatus === "uploaded" && backStatus === "uploaded";
+  const healthComplete = healthUploaded || manualEntry;
   const canGenerate = insuranceComplete && healthComplete;
 
   const reviewItems = useMemo(
@@ -53,13 +52,38 @@ export default function UploadScreen() {
         done: healthComplete,
       },
       {
-        label: "Patient notes",
-        value: "Optional context saved",
+        label: "Notes",
+        value: "Optional context included",
         done: true,
       },
     ],
     [healthComplete, insuranceComplete],
   );
+
+  const handleUpload = async () => {
+    if (!canGenerate || uploadState === "loading") return;
+
+    setUploadState("loading");
+    setUploadMessage("Uploading intake packet and processing mock OCR.");
+
+    try {
+      const response = await uploadPatientIntake({
+        insuranceComplete,
+        healthComplete,
+        healthSource,
+        notes: intakeNotes,
+      });
+
+      setUploadState("success");
+      setUploadMessage(
+        `${response.files.length} files processed. ${response.insurance.carrier} ${response.insurance.plan} detected.`,
+      );
+      setTimeout(() => router.push("/(patient)/summary"), 650);
+    } catch (error) {
+      setUploadState("error");
+      setUploadMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
+    }
+  };
 
   return (
     <Screen
@@ -90,53 +114,31 @@ export default function UploadScreen() {
           <SectionHeader
             icon="card-account-details"
             title="Insurance card"
-            detail="Add clear photos of both sides. Tap each row to move through mock upload states."
+            detail="Take or upload clear photos of both sides."
             complete={insuranceComplete}
           />
-
-          <View style={styles.actionGrid}>
-            <ActionButton
-              icon="camera"
-              label="Take photo"
-              onPress={() => setBackStatus((status) => nextStatus[status])}
-            />
-            <ActionButton
-              icon="image-plus"
-              label="Upload image"
-              onPress={() => setFrontStatus((status) => nextStatus[status])}
-            />
-          </View>
-
-          <View style={{ gap: 10, marginTop: 14 }}>
-            <UploadRow
+          <View style={{ gap: 10 }}>
+            <UploadDropzone
               label="Front of card"
               detail="Name, plan, member ID"
-              fileName="insurance_front.jpg"
               status={frontStatus}
-              onPress={() => setFrontStatus((status) => nextStatus[status])}
+              onPress={() => setFrontStatus(frontStatus === "uploaded" ? "empty" : "uploaded")}
             />
-            <UploadRow
+            <UploadDropzone
               label="Back of card"
               detail="Claims phone and payer details"
-              fileName="insurance_back.jpg"
               status={backStatus}
-              onPress={() => setBackStatus((status) => nextStatus[status])}
+              onPress={() => setBackStatus(backStatus === "uploaded" ? "empty" : "uploaded")}
             />
           </View>
 
-          <InlineDivider />
-
-          <View>
+          <View style={[styles.parsedPanel, { borderColor: theme.line, backgroundColor: theme.surface }]}>
             <View style={styles.rowBetween}>
-              <Text style={[styles.sectionTitle, { color: theme.ink }]}>Extracted fields</Text>
-              <Pill
-                label={insuranceComplete ? "Ready" : "Mock OCR"}
-                icon="text-recognition"
-                tone={insuranceComplete ? colors.green : theme.accent}
-              />
+              <Text style={[styles.sectionTitle, { color: theme.ink }]}>Detected details</Text>
+              <Pill label={insuranceComplete ? "Verified format" : "Draft"} icon="text-recognition" />
             </View>
             <View style={{ gap: 10, marginTop: 12 }}>
-              <Field label="Provider" value="Aetna" />
+              <Field label="Carrier" value="Aetna" />
               <Field label="Plan" value="Choice POS II" />
               <Field label="Member ID" value="XGH 482-19-7720" />
               <Field label="Group number" value="884216" />
@@ -148,7 +150,7 @@ export default function UploadScreen() {
           <SectionHeader
             icon="heart-pulse"
             title="Health data"
-            detail="Upload wearable exports, lab files, or enter vitals manually."
+            detail="Use a wearable export, lab file, or manual entry."
             complete={healthComplete}
           />
 
@@ -194,21 +196,18 @@ export default function UploadScreen() {
                   </Pressable>
                 ))}
               </View>
-
-              <UploadRow
-                label="Wearable file"
-                detail={`${healthSource} export, zipped XML, or CSV`}
-                fileName="apple_health_export.zip"
-                status={wearableStatus}
-                onPress={() => setWearableStatus((status) => nextStatus[status])}
+              <UploadDropzone
+                label={`${healthSource} export`}
+                detail="CSV, PDF, XML, or zipped export"
+                status={healthUploaded ? "uploaded" : "ready"}
+                onPress={() => setHealthUploaded((value) => !value)}
               />
-              <UploadRow
-                label="Lab PDF or CSV"
-                detail="Blood work, metabolic panel, or recent vitals"
-                fileName="sleep_hrv_report.pdf"
-                status={labStatus}
-                onPress={() => setLabStatus((status) => nextStatus[status])}
-              />
+              {healthUploaded && (
+                <View style={styles.fileList}>
+                  <FileRow name="apple_health_export.zip" detail="2.4 MB - synced just now" />
+                  <FileRow name="sleep_hrv_report.pdf" detail="843 KB - last 30 days" />
+                </View>
+              )}
             </View>
           ) : (
             <View style={{ gap: 12 }}>
@@ -228,14 +227,10 @@ export default function UploadScreen() {
                   <Field label="Blood pressure" value="128/82" />
                 </View>
               </View>
-              <Field
-                label="Symptoms or measurements"
-                multiline
-                value="Fatigue, dizziness when standing, and higher than usual resting heart rate."
-              />
+              <Field label="Symptoms or measurements" multiline value="Fatigue, dizziness when standing, and higher than usual resting heart rate." />
               <SecondaryButton
                 icon={manualEntry ? "check" : "content-save"}
-                label={manualEntry ? "Manual vitals saved" : "Save manual vitals"}
+                label={manualEntry ? "Manual data saved" : "Save manual data"}
                 onPress={() => setManualEntry((value) => !value)}
               />
             </View>
@@ -246,13 +241,9 @@ export default function UploadScreen() {
           <SectionHeader
             icon="note-text-outline"
             title="Optional notes"
-            detail="Add context for the summary, provider search, or booking call."
+            detail="Add anything that should shape the summary or booking call."
           />
-          <Field
-            label="Notes for Aida"
-            multiline
-            value="I have felt tired for three days and noticed my heart rate staying higher than usual. Prefer Spanish-speaking clinic staff if available."
-          />
+          <Field label="Notes for Aida" multiline value={intakeNotes} />
         </Card>
 
         <Card style={{ backgroundColor: theme.surface }}>
@@ -276,17 +267,48 @@ export default function UploadScreen() {
           </View>
         </Card>
 
+        <StatusCard state={uploadState} message={uploadMessage} />
+
         <View style={{ gap: 10 }}>
           <PrimaryButton
-            href="/(patient)/summary"
+            onPress={handleUpload}
             icon="creation"
-            label={canGenerate ? "Generate biometric summary" : "Complete required uploads"}
-            disabled={!canGenerate}
+            label={
+              uploadState === "loading"
+                ? "Uploading..."
+                : canGenerate
+                  ? "Generate summary"
+                  : "Complete required uploads"
+            }
+            disabled={!canGenerate || uploadState === "loading"}
           />
           <SecondaryButton href="/(patient)/home" icon="home" label="Return home" />
         </View>
       </View>
     </Screen>
+  );
+}
+
+function StatusCard({ state, message }: { state: ApiState; message: string }) {
+  const { theme } = useAidaTheme();
+  const tone =
+    state === "success" ? colors.green : state === "error" ? colors.red : theme.accent;
+  const icon: "check-circle" | "alert-circle-outline" | "cloud-sync" =
+    state === "success" ? "check-circle" : state === "error" ? "alert-circle-outline" : "cloud-sync";
+
+  return (
+    <Card style={{ backgroundColor: `${tone}10`, borderColor: `${tone}44` }}>
+      <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+        {state === "loading" ? (
+          <ActivityIndicator color={tone} />
+        ) : (
+          <Icon name={icon} size={22} color={tone} />
+        )}
+        <Text style={{ color: theme.ink, flex: 1, fontWeight: "800", lineHeight: 20 }}>
+          {message}
+        </Text>
+      </View>
+    </Card>
   );
 }
 
@@ -324,78 +346,48 @@ function SectionHeader({
   );
 }
 
-function UploadRow({
+function UploadDropzone({
   label,
   detail,
-  fileName,
   status,
   onPress,
 }: {
   label: string;
   detail: string;
-  fileName: string;
   status: UploadStatus;
   onPress: () => void;
 }) {
   const { theme } = useAidaTheme();
-  const meta = getStatusMeta(status);
-  const active = status !== "empty";
+  const uploaded = status === "uploaded";
   return (
     <Pressable
       onPress={onPress}
       style={[
-        styles.uploadRow,
+        styles.dropzone,
         {
-          borderColor: status === "complete" ? theme.accent : theme.line,
-          backgroundColor: active ? `${theme.accent}0F` : theme.surface,
+          borderColor: uploaded ? theme.accent : theme.line,
+          backgroundColor: uploaded ? `${theme.accent}10` : theme.surface,
         },
       ]}
     >
-      <View
-        style={[
-          styles.uploadIcon,
-          { backgroundColor: status === "complete" ? theme.accent : theme.card },
-        ]}
-      >
-        <Icon name={meta.icon} size={21} color={status === "complete" ? "#fff" : theme.accent} />
+      <View style={[styles.uploadIcon, { backgroundColor: uploaded ? theme.accent : theme.card }]}>
+        <Icon
+          name={uploaded ? "check" : status === "ready" ? "camera-plus" : "cloud-upload-outline"}
+          size={22}
+          color={uploaded ? "#fff" : theme.accent}
+        />
       </View>
       <View style={{ flex: 1 }}>
-        <View style={styles.rowBetween}>
-          <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900" }}>{label}</Text>
-          <StatusPill status={status} />
-        </View>
+        <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900" }}>{label}</Text>
         <Text style={{ color: theme.muted, lineHeight: 19, marginTop: 3 }}>
-          {active ? fileName : detail}
+          {uploaded ? "Uploaded and ready to review" : detail}
         </Text>
       </View>
+      <Text style={{ color: theme.accent, fontWeight: "900" }}>
+        {uploaded ? "Replace" : "Add"}
+      </Text>
     </Pressable>
   );
-}
-
-function ActionButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: "camera" | "image-plus";
-  label: string;
-  onPress: () => void;
-}) {
-  const { theme } = useAidaTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.actionButton, { borderColor: theme.line, backgroundColor: theme.surface }]}
-    >
-      <Icon name={icon} size={18} color={theme.accent} />
-      <Text style={{ color: theme.accent, fontWeight: "900" }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function StatusPill({ status }: { status: UploadStatus }) {
-  const meta = getStatusMeta(status);
-  return <Pill label={meta.label} icon={meta.icon} tone={meta.tone} />;
 }
 
 function SegmentButton({
@@ -423,6 +415,20 @@ function SegmentButton({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function FileRow({ name, detail }: { name: string; detail: string }) {
+  const { theme } = useAidaTheme();
+  return (
+    <View style={[styles.fileRow, { borderColor: theme.line }]}>
+      <Icon name="file-document-outline" size={20} color={theme.accent} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.ink, fontWeight: "900" }}>{name}</Text>
+        <Text style={{ color: theme.muted, marginTop: 2 }}>{detail}</Text>
+      </View>
+      <Icon name="dots-horizontal" size={22} color={theme.faint} />
+    </View>
   );
 }
 
@@ -472,24 +478,6 @@ function ReviewRow({
   );
 }
 
-function InlineDivider() {
-  const { theme } = useAidaTheme();
-  return <View style={{ height: 1, backgroundColor: theme.line, marginVertical: 16 }} />;
-}
-
-function getStatusMeta(status: UploadStatus) {
-  switch (status) {
-    case "selected":
-      return { label: "Selected", icon: "file-check-outline" as const, tone: colors.amber };
-    case "processing":
-      return { label: "Processing", icon: "progress-clock" as const, tone: colors.plum };
-    case "complete":
-      return { label: "Complete", icon: "check" as const, tone: colors.green };
-    default:
-      return { label: "Empty", icon: "cloud-upload-outline" as const, tone: colors.faint };
-  }
-}
-
 const styles = {
   heroTitle: {
     fontSize: 20,
@@ -536,22 +524,9 @@ const styles = {
     height: 6,
     borderRadius: 999,
   },
-  actionGrid: {
-    flexDirection: "row" as const,
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 15,
+  dropzone: {
     borderWidth: 1,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    flexDirection: "row" as const,
-    gap: 8,
-  },
-  uploadRow: {
-    borderWidth: 1,
+    borderStyle: "dashed" as const,
     borderRadius: 18,
     padding: 14,
     flexDirection: "row" as const,
@@ -564,6 +539,12 @@ const styles = {
     borderRadius: 14,
     alignItems: "center" as const,
     justifyContent: "center" as const,
+  },
+  parsedPanel: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 14,
   },
   segmented: {
     borderWidth: 1,
@@ -591,6 +572,17 @@ const styles = {
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 9,
+  },
+  fileList: {
+    gap: 8,
+  },
+  fileRow: {
+    borderWidth: 1,
+    borderRadius: 15,
+    padding: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
   },
   reviewRow: {
     flexDirection: "row" as const,

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { demoData } from "@aida/shared";
 import {
   Card,
   Icon,
@@ -29,8 +30,7 @@ export default function BookScreen() {
                 Suggested visit
               </Text>
               <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 4 }}>
-                General practitioner or cardiology screening for elevated resting
-                heart rate and fatigue.
+                {demoData.healthSummary.suggestedVisit}
               </Text>
             </View>
           </View>
@@ -39,9 +39,9 @@ export default function BookScreen() {
         <Card>
           <Text style={[sectionTitle, { color: theme.ink }]}>Insurance check</Text>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            <Pill label="Aetna detected" icon="card-account-details" />
-            <Pill label="$25 estimated copay" icon="cash" tone={colors.green} />
-            <Pill label="2 in-network" icon="check" tone={theme.accent} />
+            <Pill label={demoData.insurance.detectedLabel} icon="card-account-details" />
+            <Pill label={demoData.insurance.estimatedCopay} icon="cash" tone={colors.green} />
+            <Pill label={demoData.insurance.networkStatus} icon="check" tone={theme.accent} />
           </View>
         </Card>
 

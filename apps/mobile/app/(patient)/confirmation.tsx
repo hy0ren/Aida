@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import { demoData } from "@aida/shared";
 import {
   Card,
   Icon,
@@ -46,19 +47,19 @@ export default function ConfirmationScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                Dr. Lin Chen
+                {demoData.providers[0].doctor}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                General Practitioner
+                {demoData.providers[0].specialty}
               </Text>
             </View>
-            <Pill label="Scheduled" icon="check" />
+            <Pill label={demoData.selectedAppointment.status} icon="check" />
           </View>
 
           <View style={{ gap: 12, marginTop: 18 }}>
-            <Detail icon="calendar" text="Wed, May 6 at 2:30 PM" />
-            <Detail icon="hospital-building" text="Bayview Family Medicine" />
-            <Detail icon="map-marker" text="1840 Mission St, San Francisco" />
+            <Detail icon="calendar" text={demoData.selectedAppointment.displayDateTime} />
+            <Detail icon="hospital-building" text={demoData.providers[0].name} />
+            <Detail icon="map-marker" text={demoData.providers[0].address} />
             <Detail icon="bag-personal" text="Bring insurance card and photo ID" />
           </View>
         </Card>
@@ -77,8 +78,7 @@ export default function ConfirmationScreen() {
             }}
           >
             <Text style={{ color: theme.ink, lineHeight: 21 }}>
-              Aida: Cita confirmada con Dr. Lin Chen el miercoles 6 de mayo a
-              las 2:30 PM. Responde CANCELAR para anular.
+              {demoData.smsReceipt.body}
             </Text>
           </View>
         </Card>
