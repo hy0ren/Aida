@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { ObjectId } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
 
 const SALT_ROUNDS = 12;
@@ -14,14 +15,29 @@ export interface UserDocument {
   passwordHash: string;
   name?: string;
   role?: string;
+  onboardingComplete?: boolean;
+  language?: string;
+  patientProfile?: Record<string, unknown>;
+  providerProfile?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
+  role?: string;
+  onboardingComplete?: boolean;
+  language?: string;
+  patientProfile?: Record<string, unknown>;
+  providerProfile?: Record<string, unknown>;
 }
 
 export interface AuthResult {
   ok: boolean;
   token?: string;
-  user?: { id: string; email: string; name?: string; role?: string };
+  user?: AuthUser;
   error?: string;
 }
 
@@ -143,6 +159,46 @@ export async function login(email: string, password: string): Promise<AuthResult
   return {
     ok: true,
     token,
-    user: { id: userId, email: user.email, name: user.name, role: user.role },
+    user: {
+      id: userId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      onboardingComplete: user.onboardingComplete ?? false,
+      language: user.language,
+      patientProfile: user.patientProfile,
+      providerProfile: user.providerProfile,
+    },
   };
+}
+
+/**
+ * Update a user's profile / onboarding data by userId string.
+ */
+export async function updateUserProfile(
+  userId: string,
+  data: {
+    onboardingComplete?: boolean;
+    role?: string;
+    language?: string;
+    patientProfile?: Record<string, unknown>;
+    providerProfile?: Record<string, unknown>;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const col = await getUsersCollection();
+  if (!col) return { ok: true }; // fallback mock — no-op
+
+  let objectId: ObjectId;
+  try {
+    objectId = new ObjectId(userId);
+  } catch {
+    return { ok: false, error: "Invalid user ID." };
+  }
+
+  await col.updateOne(
+    { _id: objectId },
+    { $set: { ...data, updatedAt: new Date() } },
+  );
+
+  return { ok: true };
 }
