@@ -20,10 +20,18 @@ function isNetworkError(err: unknown): boolean {
 }
 
 function apiUnreachableHelp(): string {
+  if (!process.env.EXPO_PUBLIC_API_URL) {
+    return [
+      "Can't reach the API. On a phone, localhost is the phone, not your PC.",
+      "Create apps/mobile/.env with: EXPO_PUBLIC_API_URL=http://<your-computer-LAN-IP>:3000",
+      "Restart Expo. Run: cd apps/web && npm run dev. Same Wi‑Fi as the computer.",
+    ].join(" ");
+  }
   return [
-    "Can't reach the API. On a phone, localhost is the phone, not your PC.",
-    "Create apps/mobile/.env with: EXPO_PUBLIC_API_URL=http://<your-computer-LAN-IP>:3000",
-    "Restart Expo. Run: cd apps/web && npm run dev. Same Wi‑Fi as the computer.",
+    `Can't reach the API at ${API_BASE}.`,
+    "Start the Next server and leave it running: cd apps/web && npm run dev",
+    "In the phone's browser, open that URL; if it won't load, check same Wi-Fi / firewall / guest network isolation.",
+    "After changing apps/mobile/.env, fully restart Expo (Metro) so the URL is rebundled.",
   ].join(" ");
 }
 
