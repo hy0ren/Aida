@@ -1,6 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,22 +18,21 @@ import {
   fonts,
   useAidaTheme,
 } from "../../components/aida";
-import { GlassScanner, type CapturedCard } from "../../components/GlassScanner";
-import { uploadPatientIntake } from "../../lib/api";
+import { authLogin, authSignup } from "../../lib/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const TOKEN_KEY = "aida.authToken";
 
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const { theme, logout } = useAidaTheme();
+  const { theme, logout, login } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
-  const [backCard, setBackCard] = useState<CapturedCard | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (params.mode === "login") setMode("login");
@@ -41,34 +42,42 @@ export default function LoginScreen() {
     }
   }, [params.mode, logout]);
 
-  async function continueWithEmail() {
-    if (isSignup && (frontCard || backCard)) {
-      setIsUploading(true);
-      try {
-        const files: Array<{ name: string; type: any; data: string }> = [];
-        if (frontCard?.base64) {
-          files.push({ name: "insurance-card-front.jpg", type: "insurance-front", data: `data:image/jpeg;base64,${frontCard.base64}` });
-        }
-        if (backCard?.base64) {
-          files.push({ name: "insurance-card-back.jpg", type: "insurance-back", data: `data:image/jpeg;base64,${backCard.base64}` });
-        }
-        await uploadPatientIntake({
-          insuranceComplete: Boolean(frontCard && backCard),
-          healthComplete: false,
-          healthSource: "Apple Health",
-          notes: "Uploaded during sign up",
-          files,
-        });
-      } catch (err) {
-        console.warn("Upload failed during signup:", err);
-      }
-      setIsUploading(false);
+  async function handleSubmit() {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || !password) {
+      Alert.alert("Missing fields", "Please enter your email and password.");
+      return;
     }
-    router.push("/(auth)/verify");
+    if (isSignup && password.length < 6) {
+      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = isSignup
+        ? await authSignup(trimmedEmail, password)
+        : await authLogin(trimmedEmail, password);
+
+      // Persist token
+      await AsyncStorage.setItem(TOKEN_KEY, result.token);
+
+      // Update local auth state
+      login();
+
+      // Navigate to verify → onboarding (signup) or home (login)
+      router.push("/(auth)/verify");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      Alert.alert(isSignup ? "Sign up failed" : "Login failed", message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function continueWithGoogle() {
-    router.push("/(auth)/verify");
+    // Placeholder — Google OAuth not yet wired
+    Alert.alert("Coming soon", "Google authentication will be available in a future update.");
   }
 
   return (
@@ -202,36 +211,24 @@ export default function LoginScreen() {
             importantForAutofill="yes"
           />
 
-          {isSignup && (
-            <View style={{ gap: 10, marginTop: 4 }}>
-              <GlassScanner
-                label="Front of card"
-                detail="Name, plan, member ID"
-                value={frontCard}
-                onChange={setFrontCard}
-              />
-              <GlassScanner
-                label="Back of card"
-                detail="Claims phone and payer details"
-                value={backCard}
-                onChange={setBackCard}
-              />
-            </View>
-          )}
-
           <PrimaryButton
-            onPress={continueWithEmail}
-            icon={isSignup && isUploading ? "creation" : isSignup ? "account-plus" : "login"}
-            label={isSignup && isUploading ? "Creating account…" : isSignup ? "Create account" : "Login"}
-            disabled={isUploading}
+            onPress={handleSubmit}
+            icon={loading ? "creation" : isSignup ? "account-plus" : "login"}
+            label={loading ? (isSignup ? "Creating account…" : "Logging in…") : isSignup ? "Create account" : "Login"}
+            disabled={loading}
           />
           <SecondaryButton
             onPress={continueWithGoogle}
             icon="google"
             label={isSignup ? "Sign up with Google" : "Login with Google"}
-            disabled={isUploading}
           />
         </View>
+
+        {loading && (
+          <View style={{ alignItems: "center", marginTop: 16 }}>
+            <ActivityIndicator size="small" color={theme.accent} />
+          </View>
+        )}
       </View>
       </ScrollView>
     </KeyboardAvoidingView>

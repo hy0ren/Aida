@@ -13,6 +13,19 @@ import type {
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+export type AuthResponse = {
+  token: string;
+  user: { id: string; email: string; name?: string; role?: string };
+};
+
+export async function authSignup(email: string, password: string, name?: string): Promise<AuthResponse> {
+  return apiPost<AuthResponse>('/auth/signup', { email, password, name });
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthResponse> {
+  return apiPost<AuthResponse>('/auth/login', { email, password });
+}
+
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}/api${path}`, {
     method: 'POST',

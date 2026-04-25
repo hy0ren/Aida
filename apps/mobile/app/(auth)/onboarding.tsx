@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import {
   Card,
   Field,
@@ -15,6 +15,8 @@ import {
   useAidaTheme,
   type AidaRole,
 } from "../../components/aida";
+import { GlassScanner, type CapturedCard } from "../../components/GlassScanner";
+import { uploadPatientIntake } from "../../lib/api";
 
 const languages = [
   "English",
@@ -42,8 +44,6 @@ export default function OnboardingScreen() {
     theme,
   } = useAidaTheme();
   const [role, setRole] = useState<AidaRole>(savedRole);
-  const [insurance, setInsurance] = useState(patientProfile.hasInsuranceUpload);
-  const [healthData, setHealthData] = useState(patientProfile.hasHealthDataUpload);
   const [name, setName] = useState(patientProfile.name);
   const [phone, setPhone] = useState(patientProfile.phone);
   const [timezone, setTimezone] = useState(patientProfile.timezone);
@@ -51,9 +51,55 @@ export default function OnboardingScreen() {
   const [clinicEmail, setClinicEmail] = useState(providerProfile.clinicEmail);
   const [clinicCode, setClinicCode] = useState(providerProfile.clinicCode);
 
-  const isProvider = role === "provider";
+  // Insurance card capture via GlassScanner
+  const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
+  const [backCard, setBackCard] = useState<CapturedCard | null>(null);
+  const [healthData, setHealthData] = useState(patientProfile.hasHealthDataUpload);
 
-  function finishOnboarding() {
+  // Uploading state
+  const [isUploading, setIsUploading] = useState(false);
+
+  const isProvider = role === "provider";
+  const insuranceComplete = Boolean(frontCard && backCard);
+
+  async function finishOnboarding() {
+    setIsUploading(true);
+
+    // Upload insurance cards if captured
+    if (!isProvider && (frontCard || backCard)) {
+      try {
+        const files: Array<{ name: string; type: any; data: string }> = [];
+        if (frontCard?.base64) {
+          files.push({
+            name: "insurance-card-front.jpg",
+            type: "insurance-front",
+            data: `data:image/jpeg;base64,${frontCard.base64}`,
+          });
+        }
+        if (backCard?.base64) {
+          files.push({
+            name: "insurance-card-back.jpg",
+            type: "insurance-back",
+            data: `data:image/jpeg;base64,${backCard.base64}`,
+          });
+        }
+        await uploadPatientIntake({
+          insuranceComplete,
+          healthComplete: healthData,
+          healthSource: "Apple Health",
+          notes: "Uploaded during onboarding",
+          files,
+        });
+      } catch (err) {
+        console.warn("Upload failed during onboarding:", err);
+        Alert.alert(
+          "Upload notice",
+          "Insurance cards couldn't be uploaded now. You can add them later from the Upload screen.",
+          [{ text: "Continue" }]
+        );
+      }
+    }
+
     completeOnboarding({
       role,
       patientProfile: {
@@ -61,7 +107,7 @@ export default function OnboardingScreen() {
         phone,
         timezone,
         emergencyContact,
-        hasInsuranceUpload: insurance,
+        hasInsuranceUpload: insuranceComplete,
         hasHealthDataUpload: healthData,
       },
       providerProfile: {
@@ -69,6 +115,8 @@ export default function OnboardingScreen() {
         clinicCode,
       },
     });
+
+    setIsUploading(false);
     router.replace(getHomeRouteForRole(role) as never);
   }
 
@@ -173,28 +221,43 @@ export default function OnboardingScreen() {
 
         {!isProvider && (
           <Card>
-            <Text style={[sectionTitle, { color: theme.ink }]}>3. Optional demo uploads</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>3. Insurance card</Text>
             <Text style={{ color: theme.muted, lineHeight: 20, marginBottom: 14 }}>
-              You can skip these now and add them later from the Upload screen.
+              Snap photos of both sides. Aida will OCR the details for your first visit.
             </Text>
             <View style={{ gap: 10 }}>
-              <UploadChoice
-                title="Insurance card"
-                detail="Cloudinary OCR ready"
-                icon="card-account-details"
-                active={insurance}
-                accent={theme.accent}
-                onPress={() => setInsurance((v) => !v)}
+              <GlassScanner
+                label="Front of card"
+                detail="Name, plan, member ID"
+                value={frontCard}
+                onChange={setFrontCard}
               />
-              <UploadChoice
-                title="Health data"
-                detail="Apple Health, Garmin, Whoop, Oura"
-                icon="heart-pulse"
-                active={healthData}
-                accent={theme.accent}
-                onPress={() => setHealthData((v) => !v)}
+              <GlassScanner
+                label="Back of card"
+                detail="Claims phone and payer details"
+                value={backCard}
+                onChange={setBackCard}
               />
             </View>
+            {insuranceComplete && (
+              <View style={{ marginTop: 10, alignItems: "flex-start" }}>
+                <Pill label="Both sides captured" icon="check" />
+              </View>
+            )}
+          </Card>
+        )}
+
+        {!isProvider && (
+          <Card>
+            <Text style={[sectionTitle, { color: theme.ink }]}>4. Health data (optional)</Text>
+            <UploadChoice
+              title="Health data"
+              detail="Apple Health, Garmin, Whoop, Oura"
+              icon="heart-pulse"
+              active={healthData}
+              accent={theme.accent}
+              onPress={() => setHealthData((v) => !v)}
+            />
           </Card>
         )}
 
@@ -220,9 +283,10 @@ export default function OnboardingScreen() {
 
         <View style={{ gap: 10 }}>
           <PrimaryButton
-            icon="arrow-right"
-            label={isProvider ? "Enter provider portal" : "Finish onboarding"}
+            icon={isUploading ? "creation" : "arrow-right"}
+            label={isUploading ? "Setting up Aida…" : isProvider ? "Enter provider portal" : "Finish onboarding"}
             onPress={finishOnboarding}
+            disabled={isUploading}
           />
           <SecondaryButton onPress={returnToLogin} icon="arrow-left" label="Back to login" />
         </View>
