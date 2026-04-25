@@ -353,11 +353,12 @@ export const demoData: DemoData = {
     visitsToday: 8,
     aiBookedNeedingReview: 1,
     intakeStatus: "Needs review",
-    callStages: ["Calling clinic", "Connected", "Verifying insurance", "Confirmed"],
+    callStages: ["Calling clinic", "Connected", "Verifying insurance", "Checking availability", "Confirmed"],
     callTranscript: [
       "Aida: Hi, I am calling on behalf of Elena Morales to schedule a visit.",
       "Clinic: What insurance and reason for visit?",
       "Aida: Aetna Choice POS II. Elevated resting heart rate and fatigue for three days.",
+      "Clinic: Let me check Dr. Chen's next open appointment.",
       "Clinic: Dr. Chen has Wednesday at 2:30 PM.",
       "Aida: That works. Please book it.",
     ],
