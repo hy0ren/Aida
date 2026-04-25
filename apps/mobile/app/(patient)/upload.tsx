@@ -107,10 +107,29 @@ export default function UploadScreen() {
       };
 
       let result: ImagePicker.ImagePickerResult;
-      if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync(options);
-      } else {
-        result = await ImagePicker.launchImageLibraryAsync(options);
+      try {
+        if (source === "camera") {
+          result = await ImagePicker.launchCameraAsync(options);
+        } else {
+          result = await ImagePicker.launchImageLibraryAsync(options);
+        }
+      } catch (err) {
+        setStage("empty");
+        const message = err instanceof Error ? err.message : String(err);
+        const noCamera = /not available|simulator/i.test(message);
+        Alert.alert(
+          noCamera ? "Camera unavailable" : "Could not open photo",
+          noCamera
+            ? "The camera is not available here (e.g. iOS Simulator). Use a real device, or pick from your library."
+            : message,
+          noCamera
+            ? [
+                { text: "Choose from library", onPress: () => void captureImage("library", side) },
+                { text: "OK", style: "cancel" },
+              ]
+            : [{ text: "OK" }],
+        );
+        return;
       }
 
       if (result.canceled || !result.assets?.[0]) {
