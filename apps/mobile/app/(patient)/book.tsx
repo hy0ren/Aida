@@ -227,13 +227,18 @@ function ApiStatus({
 }
 
 function formatSlot(value: string) {
-  if (!value.includes("T")) return value;
-
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+  if (!value?.trim() || !value.includes("T")) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return value;
+  }
 }
 
 const sectionTitle = {
