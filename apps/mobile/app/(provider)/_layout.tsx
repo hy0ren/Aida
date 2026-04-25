@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import { useAidaTheme } from "../../components/aida";
+import { Redirect, Tabs } from "expo-router";
+import { getHomeRouteForRole, useAidaTheme } from "../../components/aida";
 
 type TabIcon = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -11,7 +11,13 @@ function tabIcon(name: TabIcon) {
 }
 
 export default function ProviderLayout() {
-  const { theme, mode } = useAidaTheme();
+  const { isReady, isLoggedIn, onboardingComplete, role, theme, mode } = useAidaTheme();
+
+  if (!isReady) return null;
+  if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
+  if (!onboardingComplete) return <Redirect href="/(auth)/onboarding" />;
+  if (role !== "provider") return <Redirect href={getHomeRouteForRole(role) as never} />;
+
   return (
     <Tabs
       screenOptions={{
