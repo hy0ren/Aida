@@ -159,7 +159,7 @@ export function uploadPatientIntake(body: {
   return apiPost<UploadResponse>('/upload', body);
 }
 
-export function summarizeUpload(body: { uploadId?: string; patientId?: string }) {
+export function summarizeUpload(body: { uploadId?: string; patientId?: string; language?: string }) {
   return apiPost<SummaryResponse>('/summarize', body);
 }
 

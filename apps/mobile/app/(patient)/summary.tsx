@@ -17,7 +17,7 @@ import {
 export default function SummaryScreen() {
   const [summary, setSummary] = useState(sampleSummary);
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
-  const [statusMessage, setStatusMessage] = useState("Generating summary from uploaded insurance and biometric data.");
+  const [statusMessage, setStatusMessage] = useState("Gemini is summarizing on-device cleaned biometrics in your language.");
   const [shareItems, setShareItems] = useState([
     "Approved summary",
     "Insurance details",
@@ -30,7 +30,7 @@ export default function SummaryScreen() {
   useEffect(() => {
     let mounted = true;
 
-    summarizeUpload({ uploadId: "upload-elena-2026-04-25", patientId: demoData.patient.id })
+    summarizeUpload({ uploadId: "upload-elena-2026-04-25", patientId: demoData.patient.id, language })
       .then((response) => {
         if (!mounted) return;
         setSummary(response.summary);
@@ -47,15 +47,23 @@ export default function SummaryScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [language]);
 
   return (
     <Screen
       title="Review summary"
       subtitle="Nothing is sent to a clinic until you approve it."
-      action={<Pill label="On-device" icon="shield-check" />}
+      action={<Pill label={`${language} + Gemini`} icon="translate" />}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
+        <Card style={{ backgroundColor: theme.surface }}>
+          <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+            <Pill label="Raw data stayed local" icon="shield-check" tone={colors.green} />
+            <Pill label="Patient approval required" icon="account-check" tone={theme.accent} />
+            <Pill label="Clinic-ready" icon="file-document-check" tone={colors.plum} />
+          </View>
+        </Card>
+
         <View style={{ flexDirection: "row", gap: 10 }}>
           <MetricCard
             icon="heart"

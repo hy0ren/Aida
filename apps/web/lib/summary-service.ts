@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import { ObjectId } from "mongodb";
 import { demoData, type SummaryResponse } from "@aida/shared";
 import { demoSummaryResponse } from "@/app/api/_mock/aida-demo";
@@ -10,6 +9,14 @@ export type SummaryRequestBody = {
   patientId?: string;
   language?: string;
   biometrics?: unknown;
+};
+
+type GeminiGenerateContentResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{ text?: string }>;
+    };
+  }>;
 };
 
 async function persistSummary(data: SummaryResponse, source: "gemini" | "demo") {
@@ -48,7 +55,6 @@ export async function generateBiometricSummary(
     return { data, source: "demo" };
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const promptData = body.biometrics
     ? JSON.stringify(body.biometrics)
     : JSON.stringify({
@@ -56,16 +62,37 @@ export async function generateBiometricSummary(
         notes: demoData.healthSummary.notesForAida,
       });
 
-  const response = await ai.models.generateContent({
-    model: AIDA_GEMINI_MODEL,
-    contents: promptData,
-    config: {
-      systemInstruction: `You are Aida, an AI medical summarizer. Summarize on-device preprocessed biometric data in a non-clinical, reassuring way for the patient. Highlight flagged metrics. The summary must be natively written in ${targetLanguage}. Keep it under 3 paragraphs. Do not include markdown formatting.`,
-      maxOutputTokens: 1024,
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${AIDA_GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptData }] }],
+        systemInstruction: {
+          parts: [
+            {
+              text: `You are Aida, an AI medical summarizer. Summarize on-device preprocessed biometric data in a non-clinical, reassuring way for the patient. Highlight flagged metrics. The summary must be natively written in ${targetLanguage}. Keep it under 3 paragraphs. Do not include markdown formatting.`,
+            },
+          ],
+        },
+        generationConfig: {
+          maxOutputTokens: 1024,
+        },
+      }),
     },
-  });
+  );
 
-  const summaryText = response.text?.trim();
+  if (!response.ok) {
+    throw new Error(`Gemini API request failed: ${response.status}`);
+  }
+
+  const payload = await response.json() as GeminiGenerateContentResponse;
+  const summaryText = payload.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text)
+    .filter(Boolean)
+    .join("\n")
+    .trim();
   const data: SummaryResponse = {
     ...buildDemoSummary(body),
     summary: summaryText && summaryText.length > 0
