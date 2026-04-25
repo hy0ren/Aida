@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
+import { verifyInsuranceResponse } from '../../_mock/aida-demo';
 
 export async function POST(req: Request) {
-  return NextResponse.json({ ok: true, route: 'book/verify-insurance' });
+  const body = await req.json().catch(() => ({}));
+
+  return NextResponse.json({
+    ok: true,
+    data: verifyInsuranceResponse(body.providerId),
+  });
 }

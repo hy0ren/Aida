@@ -11,7 +11,9 @@ import {
   SecondaryButton,
   StepDots,
   colors,
+  getHomeRouteForRole,
   useAidaTheme,
+  type AidaRole,
 } from "../../components/aida";
 
 const languages = [
@@ -29,18 +31,51 @@ const languages = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const [role, setRole] = useState<"patient" | "parent" | "provider">("patient");
-  const [insurance, setInsurance] = useState(false);
-  const [healthData, setHealthData] = useState(false);
-  const [name, setName] = useState("Maria Rivera");
-  const [phone, setPhone] = useState("+1 (415) 555-4729");
-  const [timezone, setTimezone] = useState("America/Los_Angeles");
-  const [emergencyContact, setEmergencyContact] = useState("Ana Rivera");
-  const [clinicEmail, setClinicEmail] = useState("frontdesk@bayview.example");
-  const [clinicCode, setClinicCode] = useState("BAYVIEW-DEMO");
-  const { language, setLanguage, theme } = useAidaTheme();
+  const {
+    role: savedRole,
+    patientProfile,
+    providerProfile,
+    language,
+    setLanguage,
+    completeOnboarding,
+    logout,
+    theme,
+  } = useAidaTheme();
+  const [role, setRole] = useState<AidaRole>(savedRole);
+  const [insurance, setInsurance] = useState(patientProfile.hasInsuranceUpload);
+  const [healthData, setHealthData] = useState(patientProfile.hasHealthDataUpload);
+  const [name, setName] = useState(patientProfile.name);
+  const [phone, setPhone] = useState(patientProfile.phone);
+  const [timezone, setTimezone] = useState(patientProfile.timezone);
+  const [emergencyContact, setEmergencyContact] = useState(patientProfile.emergencyContact);
+  const [clinicEmail, setClinicEmail] = useState(providerProfile.clinicEmail);
+  const [clinicCode, setClinicCode] = useState(providerProfile.clinicCode);
 
   const isProvider = role === "provider";
+
+  function finishOnboarding() {
+    completeOnboarding({
+      role,
+      patientProfile: {
+        name,
+        phone,
+        timezone,
+        emergencyContact,
+        hasInsuranceUpload: insurance,
+        hasHealthDataUpload: healthData,
+      },
+      providerProfile: {
+        clinicEmail,
+        clinicCode,
+      },
+    });
+    router.replace(getHomeRouteForRole(role) as never);
+  }
+
+  function returnToLogin() {
+    logout();
+    router.replace("/(auth)/login?mode=login");
+  }
 
   return (
     <Screen
@@ -66,7 +101,9 @@ export default function OnboardingScreen() {
                     gap: 6,
                   }}
                 >
-                  {language === item && <Icon name="check" size={14} color="#fff" />}
+                  <View style={{ width: 14, height: 14 }}>
+                    {language === item && <Icon name="check" size={14} color="#fff" />}
+                  </View>
                   <Text
                     style={{
                       color: language === item ? "#fff" : theme.ink,
@@ -101,7 +138,7 @@ export default function OnboardingScreen() {
                 icon: "stethoscope",
               },
             ].map((item) => (
-              <Pressable key={item.id} onPress={() => setRole(item.id as typeof role)}>
+              <Pressable key={item.id} onPress={() => setRole(item.id as AidaRole)}>
                 <View
                   style={{
                     borderWidth: 1.5,
@@ -180,11 +217,9 @@ export default function OnboardingScreen() {
           <PrimaryButton
             icon="arrow-right"
             label={isProvider ? "Enter provider portal" : "Finish onboarding"}
-            onPress={() =>
-              router.push(isProvider ? "/(provider)/dashboard" : "/(patient)/home")
-            }
+            onPress={finishOnboarding}
           />
-          <SecondaryButton href="/(auth)/login" icon="arrow-left" label="Back to login" />
+          <SecondaryButton onPress={returnToLogin} icon="arrow-left" label="Back to login" />
         </View>
       </View>
     </Screen>

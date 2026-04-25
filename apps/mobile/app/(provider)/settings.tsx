@@ -19,6 +19,9 @@ export default function ProviderSettingsScreen() {
     setNotifications,
     calendarSync,
     setCalendarSync,
+    providerProfile,
+    updateProviderProfile,
+    logout,
     theme,
   } = useAidaTheme();
 
@@ -41,7 +44,7 @@ export default function ProviderSettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 20, fontWeight: "900" }}>
-                Bayview Family Medicine
+                {providerProfile.clinicName}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
                 Provider account
@@ -56,10 +59,33 @@ export default function ProviderSettingsScreen() {
             Clinic profile
           </Text>
           <View style={{ gap: 12 }}>
-            <Field label="Clinic name" value="Bayview Family Medicine" />
-            <Field label="Provider email" value="frontdesk@bayview.example" />
-            <Field label="Phone" value="+1 (415) 555-0184" keyboardType="phone-pad" />
-            <Field label="Timezone" value="America/Los_Angeles" />
+            <Field
+              label="Clinic name"
+              value={providerProfile.clinicName}
+              onChangeText={(clinicName) => updateProviderProfile({ clinicName })}
+            />
+            <Field
+              label="Provider email"
+              value={providerProfile.clinicEmail}
+              onChangeText={(clinicEmail) => updateProviderProfile({ clinicEmail })}
+              keyboardType="email-address"
+            />
+            <Field
+              label="Clinic code"
+              value={providerProfile.clinicCode}
+              onChangeText={(clinicCode) => updateProviderProfile({ clinicCode })}
+            />
+            <Field
+              label="Phone"
+              value={providerProfile.phone}
+              onChangeText={(phone) => updateProviderProfile({ phone })}
+              keyboardType="phone-pad"
+            />
+            <Field
+              label="Timezone"
+              value={providerProfile.timezone}
+              onChangeText={(timezone) => updateProviderProfile({ timezone })}
+            />
           </View>
         </Card>
 
@@ -88,7 +114,10 @@ export default function ProviderSettingsScreen() {
         </Card>
 
         <SecondaryButton
-          onPress={() => router.replace("/(auth)/login?mode=login")}
+          onPress={() => {
+            logout();
+            router.replace("/(auth)/login?mode=login");
+          }}
           icon="logout"
           label="Log out"
         />

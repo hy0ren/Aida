@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link } from "expo-router";
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
   Pressable,
@@ -37,13 +38,69 @@ export const fonts = {
 };
 
 type ModeName = "light" | "dark";
+export type AidaRole = "patient" | "parent" | "provider";
+
+export type PatientProfile = {
+  name: string;
+  phone: string;
+  timezone: string;
+  emergencyContact: string;
+  hasInsuranceUpload: boolean;
+  hasHealthDataUpload: boolean;
+};
+
+export type ProviderProfile = {
+  clinicName: string;
+  clinicEmail: string;
+  clinicCode: string;
+  phone: string;
+  timezone: string;
+};
+
 const RED_ACCENT = "#c94f47";
+const STORAGE_KEY = "aida.demoState.v1";
+
+const defaultPatientProfile: PatientProfile = {
+  name: "Maria Rivera",
+  phone: "+1 (415) 555-4729",
+  timezone: "America/Los_Angeles",
+  emergencyContact: "Ana Rivera",
+  hasInsuranceUpload: false,
+  hasHealthDataUpload: false,
+};
+
+const defaultProviderProfile: ProviderProfile = {
+  clinicName: "Bayview Family Medicine",
+  clinicEmail: "frontdesk@bayview.example",
+  clinicCode: "BAYVIEW-DEMO",
+  phone: "+1 (415) 555-0184",
+  timezone: "America/Los_Angeles",
+};
+
+export function getHomeRouteForRole(role: AidaRole) {
+  return role === "provider" ? "/(provider)/dashboard" : "/(patient)/home";
+}
 
 type ThemeState = {
+  isReady: boolean;
+  isLoggedIn: boolean;
+  onboardingComplete: boolean;
+  role: AidaRole;
+  patientProfile: PatientProfile;
+  providerProfile: ProviderProfile;
   mode: ModeName;
   language: string;
   notifications: boolean;
   calendarSync: boolean;
+  login: () => void;
+  logout: () => void;
+  completeOnboarding: (state: {
+    role: AidaRole;
+    patientProfile?: Partial<PatientProfile>;
+    providerProfile?: Partial<ProviderProfile>;
+  }) => void;
+  updatePatientProfile: (profile: Partial<PatientProfile>) => void;
+  updateProviderProfile: (profile: Partial<ProviderProfile>) => void;
   setMode: (mode: ModeName) => void;
   setLanguage: (language: string) => void;
   setNotifications: (enabled: boolean) => void;
@@ -63,10 +120,133 @@ type ThemeState = {
 const ThemeContext = createContext<ThemeState | null>(null);
 
 export function AidaThemeProvider({ children }: { children: ReactNode }) {
+  const [isReady, setIsReady] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [role, setRole] = useState<AidaRole>("patient");
+  const [patientProfile, setPatientProfile] = useState<PatientProfile>(defaultPatientProfile);
+  const [providerProfile, setProviderProfile] = useState<ProviderProfile>(defaultProviderProfile);
   const [mode, setMode] = useState<ModeName>("light");
   const [language, setLanguage] = useState("English");
   const [notifications, setNotifications] = useState(true);
   const [calendarSync, setCalendarSync] = useState(false);
+
+  useEffect(() => {
+    async function hydrate() {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const saved = JSON.parse(raw) as Partial<{
+          isLoggedIn: boolean;
+          onboardingComplete: boolean;
+          role: AidaRole;
+          patientProfile: Partial<PatientProfile>;
+          providerProfile: Partial<ProviderProfile>;
+          mode: ModeName;
+          language: string;
+          notifications: boolean;
+          calendarSync: boolean;
+        }>;
+
+        setIsLoggedIn(Boolean(saved.isLoggedIn));
+        setOnboardingComplete(Boolean(saved.onboardingComplete));
+        if (saved.role === "patient" || saved.role === "parent" || saved.role === "provider") {
+          setRole(saved.role);
+        }
+        if (saved.mode === "light" || saved.mode === "dark") {
+          setMode(saved.mode);
+        }
+        if (typeof saved.language === "string" && saved.language.length > 0) {
+          setLanguage(saved.language);
+        }
+        if (typeof saved.notifications === "boolean") {
+          setNotifications(saved.notifications);
+        }
+        if (typeof saved.calendarSync === "boolean") {
+          setCalendarSync(saved.calendarSync);
+        }
+        if (saved.patientProfile) {
+          setPatientProfile({ ...defaultPatientProfile, ...saved.patientProfile });
+        }
+        if (saved.providerProfile) {
+          setProviderProfile({ ...defaultProviderProfile, ...saved.providerProfile });
+        }
+      } catch (error) {
+        console.warn("Unable to load saved Aida state", error);
+      } finally {
+        setIsReady(true);
+      }
+    }
+
+    void hydrate();
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    const state = {
+      isLoggedIn,
+      onboardingComplete,
+      role,
+      patientProfile,
+      providerProfile,
+      mode,
+      language,
+      notifications,
+      calendarSync,
+    };
+
+    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch((error) => {
+      console.warn("Unable to save Aida state", error);
+    });
+  }, [
+    calendarSync,
+    isLoggedIn,
+    isReady,
+    language,
+    mode,
+    notifications,
+    onboardingComplete,
+    patientProfile,
+    providerProfile,
+    role,
+  ]);
+
+  const login = useCallback(() => {
+    setIsLoggedIn(true);
+  }, []);
+
+  const logout = useCallback(() => {
+    setIsLoggedIn(false);
+  }, []);
+
+  const updatePatientProfile = useCallback((profile: Partial<PatientProfile>) => {
+    setPatientProfile((current) => ({ ...current, ...profile }));
+  }, []);
+
+  const updateProviderProfile = useCallback((profile: Partial<ProviderProfile>) => {
+    setProviderProfile((current) => ({ ...current, ...profile }));
+  }, []);
+
+  const completeOnboarding = useCallback(
+    ({
+      role: nextRole,
+      patientProfile: nextPatientProfile,
+      providerProfile: nextProviderProfile,
+    }: {
+      role: AidaRole;
+      patientProfile?: Partial<PatientProfile>;
+      providerProfile?: Partial<ProviderProfile>;
+    }) => {
+      setIsLoggedIn(true);
+      setOnboardingComplete(true);
+      setRole(nextRole);
+      if (nextPatientProfile) updatePatientProfile(nextPatientProfile);
+      if (nextProviderProfile) updateProviderProfile(nextProviderProfile);
+    },
+    [updatePatientProfile, updateProviderProfile],
+  );
 
   const theme = useMemo(() => {
     const accent = RED_ACCENT;
@@ -96,17 +276,45 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      isReady,
+      isLoggedIn,
+      onboardingComplete,
+      role,
+      patientProfile,
+      providerProfile,
       mode,
       language,
       notifications,
       calendarSync,
+      login,
+      logout,
+      completeOnboarding,
+      updatePatientProfile,
+      updateProviderProfile,
       setMode,
       setLanguage,
       setNotifications,
       setCalendarSync,
       theme,
     }),
-    [calendarSync, language, mode, notifications, theme],
+    [
+      calendarSync,
+      completeOnboarding,
+      isLoggedIn,
+      isReady,
+      language,
+      login,
+      logout,
+      mode,
+      notifications,
+      onboardingComplete,
+      patientProfile,
+      providerProfile,
+      role,
+      theme,
+      updatePatientProfile,
+      updateProviderProfile,
+    ],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

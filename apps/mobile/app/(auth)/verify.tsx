@@ -7,19 +7,25 @@ import {
   PrimaryButton,
   StepDots,
   colors,
+  getHomeRouteForRole,
   useAidaTheme,
 } from "../../components/aida";
 
 export default function VerifyScreen() {
   const router = useRouter();
   const [stage, setStage] = useState<"ready" | "scanning" | "done">("ready");
-  const { theme } = useAidaTheme();
+  const { login, onboardingComplete, role, theme } = useAidaTheme();
 
   function begin() {
     setStage("scanning");
     setTimeout(() => {
       setStage("done");
-      setTimeout(() => router.replace("/(auth)/onboarding"), 700);
+      login();
+      setTimeout(() => {
+        router.replace(
+          onboardingComplete ? (getHomeRouteForRole(role) as never) : "/(auth)/onboarding",
+        );
+      }, 700);
     }, 1300);
   }
 

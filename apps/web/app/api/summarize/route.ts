@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
+import { demoSummaryResponse } from '../_mock/aida-demo';
 
 export async function POST(req: Request) {
-  return NextResponse.json({ ok: true, route: 'summarize' });
+  const body = await req.json().catch(() => ({}));
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      ...demoSummaryResponse,
+      uploadId: body.uploadId ?? demoSummaryResponse.uploadId,
+    },
+  });
 }

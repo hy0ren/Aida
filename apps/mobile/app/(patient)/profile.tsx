@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Pressable, Switch, Text, View } from "react-native";
 import {
@@ -35,12 +34,12 @@ export default function ProfileScreen() {
     setNotifications,
     calendarSync,
     setCalendarSync,
+    patientProfile,
+    updatePatientProfile,
+    role,
+    logout,
     theme,
   } = useAidaTheme();
-  const [name, setName] = useState("Maria Rivera");
-  const [phone, setPhone] = useState("+1 (415) 555-4729");
-  const [timezone, setTimezone] = useState("America/Los_Angeles");
-  const [emergencyContact, setEmergencyContact] = useState("Ana Rivera");
 
   return (
     <Screen title="Settings" subtitle="Personalize Aida for your care workflow.">
@@ -61,10 +60,10 @@ export default function ProfileScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 20, fontWeight: "900" }}>
-                {name}
+                {patientProfile.name}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                Patient account
+                {role === "parent" ? "Parent account" : "Patient account"}
               </Text>
             </View>
             <Pill label="Verified" icon="check" />
@@ -119,8 +118,14 @@ export default function ProfileScreen() {
                     paddingVertical: 9,
                     borderRadius: 999,
                     backgroundColor: language === item ? theme.accent : theme.surface,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
+                  <View style={{ width: 14, height: 14 }}>
+                    {language === item && <Icon name="check" size={14} color="#fff" />}
+                  </View>
                   <Text
                     style={{
                       color: language === item ? "#fff" : theme.ink,
@@ -138,10 +143,27 @@ export default function ProfileScreen() {
         <Card>
           <Text style={[sectionTitle, { color: theme.ink }]}>Care preferences</Text>
           <View style={{ gap: 12 }}>
-            <Field label="Display name" value={name} onChangeText={setName} />
-            <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            <Field label="Timezone" value={timezone} onChangeText={setTimezone} />
-            <Field label="Emergency contact" value={emergencyContact} onChangeText={setEmergencyContact} />
+            <Field
+              label="Display name"
+              value={patientProfile.name}
+              onChangeText={(name) => updatePatientProfile({ name })}
+            />
+            <Field
+              label="Phone"
+              value={patientProfile.phone}
+              onChangeText={(phone) => updatePatientProfile({ phone })}
+              keyboardType="phone-pad"
+            />
+            <Field
+              label="Timezone"
+              value={patientProfile.timezone}
+              onChangeText={(timezone) => updatePatientProfile({ timezone })}
+            />
+            <Field
+              label="Emergency contact"
+              value={patientProfile.emergencyContact}
+              onChangeText={(emergencyContact) => updatePatientProfile({ emergencyContact })}
+            />
           </View>
         </Card>
 
@@ -165,7 +187,10 @@ export default function ProfileScreen() {
         </Card>
 
         <SecondaryButton
-          onPress={() => router.replace("/(auth)/login?mode=login")}
+          onPress={() => {
+            logout();
+            router.replace("/(auth)/login?mode=login");
+          }}
           icon="logout"
           label="Log out"
         />
