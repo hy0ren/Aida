@@ -29,6 +29,9 @@ export interface UploadedFile {
   type: 'insurance-front' | 'insurance-back' | 'biometric-export' | 'clinical-note';
   source: string;
   status: 'processed' | 'needs-review';
+  /** When stored in Cloudinary or another CDN */
+  url?: string;
+  publicId?: string;
 }
 
 export interface UploadResponse {

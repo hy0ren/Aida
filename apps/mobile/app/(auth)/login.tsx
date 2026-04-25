@@ -1,6 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import {
   Field,
   Icon,
@@ -13,14 +20,20 @@ import {
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const { theme } = useAidaTheme();
+  const { theme, logout } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
 
   useEffect(() => {
     if (params.mode === "login") setMode("login");
-    if (params.mode === "signup") setMode("signup");
-  }, [params.mode]);
+    if (params.mode === "signup") {
+      logout();
+      setMode("signup");
+    }
+  }, [params.mode, logout]);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   function continueWithEmail() {
     router.push("/(auth)/verify");
@@ -31,14 +44,17 @@ export default function LoginScreen() {
   }
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.wash,
-        padding: 22,
-      }}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.wash }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 6 : 0}
     >
-      <View style={{ paddingTop: 70, flex: 1 }}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ flexGrow: 1, padding: 22, paddingBottom: 28 }}
+        showsVerticalScrollIndicator={false}
+      >
+      <View style={{ paddingTop: 70, flex: 1, minHeight: 160 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <View
             style={{
@@ -103,7 +119,12 @@ export default function LoginScreen() {
           {(["login", "signup"] as const).map((item) => (
             <Pressable
               key={item}
-              onPress={() => setMode(item)}
+              onPress={() => {
+                if (item === "signup") {
+                  logout();
+                }
+                setMode(item);
+              }}
               style={{
                 flex: 1,
                 minHeight: 44,
@@ -126,8 +147,32 @@ export default function LoginScreen() {
         </View>
 
         <View style={{ gap: 12 }}>
-          <Field label="Email" value="maria@example.com" keyboardType="email-address" />
-          <Field label="Password" value="password123" secureTextEntry />
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@clinic.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            importantForAutofill="yes"
+          />
+          <Field
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete={isSignup ? "password-new" : "password"}
+            textContentType={isSignup ? "newPassword" : "password"}
+            returnKeyType="go"
+            importantForAutofill="yes"
+          />
           <PrimaryButton
             onPress={continueWithEmail}
             icon={isSignup ? "account-plus" : "login"}
@@ -144,6 +189,7 @@ export default function LoginScreen() {
           Verification comes next. Then choose patient, parent, or provider.
         </Text>
       </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -78,7 +78,6 @@ export default function ProfileScreen() {
           <PaletteSelector />
           <SettingToggle
             title="Dark mode"
-            detail="Use charcoal app surfaces"
             value={mode === "dark"}
             onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
           />

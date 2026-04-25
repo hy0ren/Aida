@@ -77,7 +77,6 @@ export default function ProviderSettingsScreen() {
           <PaletteSelector />
           <SettingToggle
             title="Dark mode"
-            detail="Use charcoal provider surfaces"
             value={mode === "dark"}
             onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
           />

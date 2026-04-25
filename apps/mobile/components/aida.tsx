@@ -245,6 +245,10 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setIsLoggedIn(false);
+    setOnboardingComplete(false);
+    setRole("patient");
+    setPatientProfile(defaultPatientProfile);
+    setProviderProfile(defaultProviderProfile);
   }, []);
 
   const updatePatientProfile = useCallback((profile: Partial<PatientProfile>) => {
@@ -369,7 +373,7 @@ export function SettingToggle({
   onValueChange,
 }: {
   title: string;
-  detail: string;
+  detail?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
 }) {
@@ -378,7 +382,7 @@ export function SettingToggle({
     <View style={styles.settingToggle}>
       <View style={{ flex: 1 }}>
         <Text style={[styles.settingTitle, { color: theme.ink }]}>{title}</Text>
-        <Text style={[styles.settingDetail, { color: theme.muted }]}>{detail}</Text>
+        {detail ? <Text style={[styles.settingDetail, { color: theme.muted }]}>{detail}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -648,6 +652,8 @@ export function StepDots({
 
 export function Field({
   label,
+  style,
+  editable = true,
   ...props
 }: TextInputProps & {
   label: string;
@@ -658,6 +664,7 @@ export function Field({
       <Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text>
       <TextInput
         placeholderTextColor={theme.faint}
+        editable={editable}
         style={[
           styles.field,
           {
@@ -665,6 +672,7 @@ export function Field({
             borderColor: theme.line,
             color: theme.ink,
           },
+          style,
         ]}
         {...props}
       />
