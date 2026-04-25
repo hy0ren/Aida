@@ -44,6 +44,20 @@ export interface UploadResponse {
   readyForSummary: boolean;
 }
 
+/** Summary row for GET /api/upload?patientId= */
+export interface UploadListItem {
+  uploadId: string;
+  patientId: string;
+  createdAt: string;
+  readyForSummary: boolean;
+  fileCount: number;
+  notes: string;
+}
+
+export interface ListUploadsData {
+  items: UploadListItem[];
+}
+
 export interface SummaryResponse {
   summaryId: string;
   patientId: string;
@@ -114,6 +128,10 @@ export interface AppointmentResponse {
   scheduledAt: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   preparation: string[];
+}
+
+export interface ListAppointmentsData {
+  items: AppointmentResponse[];
 }
 
 export interface SmsResponse {

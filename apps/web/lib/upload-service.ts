@@ -1,5 +1,11 @@
 import { ObjectId } from "mongodb";
-import { demoData, type UploadResponse, type UploadedFile } from "@aida/shared";
+import {
+  demoData,
+  type ListUploadsData,
+  type UploadListItem,
+  type UploadResponse,
+  type UploadedFile,
+} from "@aida/shared";
 import {
   demoBiometrics,
   demoInsurance,
@@ -93,4 +99,50 @@ export async function processUploadIntake(body: UploadRequestBody): Promise<{
   }
 
   return { data, source: "demo" };
+}
+
+export async function listUploadsByPatientId(
+  patientId: string
+): Promise<{ data: ListUploadsData; source: "database" | "demo" }> {
+  if (!isMongoConfigured()) {
+    return { data: { items: [] }, source: "demo" };
+  }
+  const db = await getDb();
+  if (!db) {
+    return { data: { items: [] }, source: "demo" };
+  }
+
+  const docs = await db
+    .collection(collections.uploads)
+    .find({ patientId }, { sort: { createdAt: -1 } })
+    .project({
+      _id: 0,
+      uploadId: 1,
+      patientId: 1,
+      createdAt: 1,
+      readyForSummary: 1,
+      notes: 1,
+      files: 1,
+    })
+    .toArray();
+
+  const items: UploadListItem[] = docs.map((d) => {
+    const created = d.createdAt;
+    const createdAt =
+      created instanceof Date
+        ? created.toISOString()
+        : created != null
+          ? new Date(created as string | number).toISOString()
+          : new Date(0).toISOString();
+    return {
+      uploadId: d.uploadId as string,
+      patientId: d.patientId as string,
+      createdAt,
+      readyForSummary: Boolean(d.readyForSummary),
+      fileCount: Array.isArray(d.files) ? d.files.length : 0,
+      notes: typeof d.notes === "string" ? d.notes : "",
+    };
+  });
+
+  return { data: { items }, source: "database" };
 }

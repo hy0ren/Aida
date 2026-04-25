@@ -4,6 +4,8 @@ import type {
   CallSessionResponse,
   FindProvidersResponse,
   InsuranceVerificationResponse,
+  ListAppointmentsData,
+  ListUploadsData,
   SmsResponse,
   SummaryResponse,
   UploadResponse,
@@ -64,6 +66,14 @@ export function initiateCall(body: { providerId?: string; patientId?: string; su
 
 export function createAppointment(body: { callSessionId?: string; providerId?: string }) {
   return apiPost<AppointmentResponse>('/appointments', body);
+}
+
+export function listUploads(patientId: string) {
+  return apiGet<ListUploadsData>(`/upload?${new URLSearchParams({ patientId }).toString()}`);
+}
+
+export function listAppointments(patientId: string) {
+  return apiGet<ListAppointmentsData>(`/appointments?${new URLSearchParams({ patientId }).toString()}`);
 }
 
 export function sendAppointmentSms(body: { appointmentId?: string; patientId?: string }) {

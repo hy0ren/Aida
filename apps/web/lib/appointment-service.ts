@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { demoData, type AppointmentResponse } from "@aida/shared";
+import { demoData, type AppointmentResponse, type ListAppointmentsData } from "@aida/shared";
 import { demoAppointmentResponse } from "@/app/api/_mock/aida-demo";
 import { collections, getDb, isMongoConfigured } from "@/lib/mongodb";
 
@@ -52,4 +52,36 @@ export async function processCreateAppointment(
   }
 
   return { data, source: "demo" };
+}
+
+export async function listAppointmentsByPatientId(
+  patientId: string
+): Promise<{ data: ListAppointmentsData; source: "database" | "demo" }> {
+  if (!isMongoConfigured()) {
+    return { data: { items: [] }, source: "demo" };
+  }
+  const db = await getDb();
+  if (!db) {
+    return { data: { items: [] }, source: "demo" };
+  }
+
+  const docs = await db
+    .collection(collections.appointments)
+    .find({ patientId }, { sort: { createdAt: -1 } })
+    .project({
+      _id: 0,
+      appointmentId: 1,
+      patientId: 1,
+      providerId: 1,
+      doctor: 1,
+      specialty: 1,
+      clinicName: 1,
+      address: 1,
+      scheduledAt: 1,
+      status: 1,
+      preparation: 1,
+    })
+    .toArray();
+
+  return { data: { items: docs as AppointmentResponse[] }, source: "database" };
 }

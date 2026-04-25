@@ -74,7 +74,11 @@ export default function OnboardingScreen() {
 
   function returnToLogin() {
     logout();
-    router.replace("/(auth)/login?mode=login");
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(auth)/login?mode=login");
+    }
   }
 
   return (
