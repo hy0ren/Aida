@@ -2,11 +2,11 @@ import type {
   AppointmentResponse,
   ApiResponse,
   CallSessionResponse,
+  ConfirmationMessageResponse,
   FindProvidersResponse,
   InsuranceVerificationResponse,
   ListAppointmentsData,
   ListUploadsData,
-  SmsResponse,
   SummaryResponse,
   UploadResponse,
 } from "@aida/shared";
@@ -61,7 +61,8 @@ export type AuthUser = {
   lastLoginAt?: string;
   passwordUpdatedAt?: string;
   notificationsEnabled?: boolean;
-  smsEnabled?: boolean;
+  pushNotificationsEnabled?: boolean;
+  expoPushToken?: string;
   emailNotificationsEnabled?: boolean;
   calendarSyncEnabled?: boolean;
   themeMode?: "light" | "dark";
@@ -186,6 +187,11 @@ export function listAppointments(patientId: string) {
   return apiGet<ListAppointmentsData>(`/appointments?${new URLSearchParams({ patientId }).toString()}`);
 }
 
-export function sendAppointmentSms(body: { appointmentId?: string; patientId?: string }) {
-  return apiPost<SmsResponse>('/sms', body);
+export function sendAppointmentConfirmation(body: {
+  appointmentId?: string;
+  patientId?: string;
+  expoPushToken?: string;
+  language?: string;
+}) {
+  return apiPost<ConfirmationMessageResponse>('/confirmations', body);
 }

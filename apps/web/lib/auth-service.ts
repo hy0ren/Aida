@@ -32,7 +32,8 @@ export interface UserDocument {
   passwordUpdatedAt?: Date;
   failedLoginCount: number;
   notificationsEnabled: boolean;
-  smsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  expoPushToken?: string;
   emailNotificationsEnabled: boolean;
   calendarSyncEnabled: boolean;
   themeMode?: "light" | "dark";
@@ -63,7 +64,8 @@ export interface AuthUser {
   lastLoginAt?: string;
   passwordUpdatedAt?: string;
   notificationsEnabled?: boolean;
-  smsEnabled?: boolean;
+  pushNotificationsEnabled?: boolean;
+  expoPushToken?: string;
   emailNotificationsEnabled?: boolean;
   calendarSyncEnabled?: boolean;
   themeMode?: "light" | "dark";
@@ -149,7 +151,8 @@ function serializeUser(user: UserDocument & { _id?: unknown }): AuthUser {
     lastLoginAt: toIso(user.lastLoginAt),
     passwordUpdatedAt: toIso(user.passwordUpdatedAt),
     notificationsEnabled: user.notificationsEnabled ?? true,
-    smsEnabled: user.smsEnabled ?? true,
+    pushNotificationsEnabled: user.pushNotificationsEnabled ?? true,
+    expoPushToken: user.expoPushToken,
     emailNotificationsEnabled: user.emailNotificationsEnabled ?? true,
     calendarSyncEnabled: user.calendarSyncEnabled ?? false,
     themeMode: user.themeMode,
@@ -208,7 +211,7 @@ export async function signup(
         emailVerified: false,
         phoneVerified: false,
         notificationsEnabled: true,
-        smsEnabled: true,
+        pushNotificationsEnabled: true,
         emailNotificationsEnabled: true,
         calendarSyncEnabled: false,
       },
@@ -248,7 +251,7 @@ export async function signup(
     passwordUpdatedAt: now,
     failedLoginCount: 0,
     notificationsEnabled: true,
-    smsEnabled: true,
+    pushNotificationsEnabled: true,
     emailNotificationsEnabled: true,
     calendarSyncEnabled: false,
     themeMode: "light",
@@ -278,7 +281,7 @@ export async function signup(
       phoneVerified: false,
       passwordUpdatedAt: now.toISOString(),
       notificationsEnabled: true,
-      smsEnabled: true,
+      pushNotificationsEnabled: true,
       emailNotificationsEnabled: true,
       calendarSyncEnabled: false,
       themeMode: "light",
@@ -313,7 +316,7 @@ export async function login(email: string, password: string): Promise<AuthResult
         onboardingComplete: true,
         accountStatus: "active",
         notificationsEnabled: true,
-        smsEnabled: true,
+        pushNotificationsEnabled: true,
         emailNotificationsEnabled: true,
         calendarSyncEnabled: false,
       },
@@ -363,7 +366,7 @@ export async function login(email: string, password: string): Promise<AuthResult
     phoneVerified: user.phoneVerified ?? false,
     failedLoginCount: 0,
     notificationsEnabled: user.notificationsEnabled ?? true,
-    smsEnabled: user.smsEnabled ?? true,
+    pushNotificationsEnabled: user.pushNotificationsEnabled ?? true,
     emailNotificationsEnabled: user.emailNotificationsEnabled ?? true,
     calendarSyncEnabled: user.calendarSyncEnabled ?? false,
     themeMode: user.themeMode ?? "light",
@@ -423,7 +426,8 @@ export async function updateUserProfile(
     phone?: string;
     timezone?: string;
     notificationsEnabled?: boolean;
-    smsEnabled?: boolean;
+    pushNotificationsEnabled?: boolean;
+    expoPushToken?: string;
     emailNotificationsEnabled?: boolean;
     calendarSyncEnabled?: boolean;
     themeMode?: "light" | "dark";
@@ -465,7 +469,10 @@ export async function updateUserProfile(
   if (typeof data.phone === "string") updateData.phone = data.phone;
   if (typeof data.timezone === "string") updateData.timezone = data.timezone;
   if (typeof data.notificationsEnabled === "boolean") updateData.notificationsEnabled = data.notificationsEnabled;
-  if (typeof data.smsEnabled === "boolean") updateData.smsEnabled = data.smsEnabled;
+  if (typeof data.pushNotificationsEnabled === "boolean") {
+    updateData.pushNotificationsEnabled = data.pushNotificationsEnabled;
+  }
+  if (typeof data.expoPushToken === "string") updateData.expoPushToken = data.expoPushToken;
   if (typeof data.emailNotificationsEnabled === "boolean") {
     updateData.emailNotificationsEnabled = data.emailNotificationsEnabled;
   }
