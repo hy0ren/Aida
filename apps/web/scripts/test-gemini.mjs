@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
 async function main() {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -15,23 +13,39 @@ async function main() {
   const model = "gemini-2.5-flash";
   console.log(`[INFO] Calling Gemini (${model}) with a tiny sanity prompt...`);
 
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
     const started = Date.now();
-    const response = await ai.models.generateContent({
-      model,
-      contents:
-        'Reply with exactly the phrase: "Aida key works". No other text.',
-      config: {
-        maxOutputTokens: 32,
-      },
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: 'Reply with exactly the phrase: "Aida key works". No other text.' },
+            ],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 32,
+        },
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API returned ${response.status}: ${await response.text()}`);
+    }
+
+    const payload = await response.json();
     const elapsedMs = Date.now() - started;
 
-    const text = (response.text ?? "").trim();
-    const usage = response.usageMetadata;
-    const candidate = response.candidates?.[0];
+    const candidate = payload.candidates?.[0];
+    const text = (candidate?.content?.parts ?? [])
+      .map((part) => part.text)
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+    const usage = payload.usageMetadata;
 
     console.log("[PASS] Gemini API responded.");
     console.log(`  model:         ${model}`);
