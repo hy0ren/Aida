@@ -117,7 +117,7 @@ export default function VerifyScreen() {
           onPress={begin}
         />
         <Text style={{ color: theme.muted, textAlign: "center", lineHeight: 20 }}>
-          World ID is required for new patient signup. Google is optional.
+          Verification protects appointment booking before you choose patient, parent, or provider.
         </Text>
       </View>
     </View>

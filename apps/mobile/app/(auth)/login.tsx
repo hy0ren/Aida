@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
   Field,
@@ -12,16 +12,22 @@ import {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const { theme } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
 
+  useEffect(() => {
+    if (params.mode === "login") setMode("login");
+    if (params.mode === "signup") setMode("signup");
+  }, [params.mode]);
+
   function continueWithEmail() {
-    router.push("/(auth)/onboarding");
+    router.push("/(auth)/verify");
   }
 
   function continueWithGoogle() {
-    router.push("/(auth)/onboarding");
+    router.push("/(auth)/verify");
   }
 
   return (
@@ -135,7 +141,7 @@ export default function LoginScreen() {
         </View>
 
         <Text style={{ color: theme.muted, marginTop: 18, textAlign: "center", lineHeight: 20 }}>
-          Choose patient, parent, or provider on the next step.
+          Verification comes next. Then choose patient, parent, or provider.
         </Text>
       </View>
     </View>

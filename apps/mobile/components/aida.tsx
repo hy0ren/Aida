@@ -64,7 +64,7 @@ const ThemeContext = createContext<ThemeState | null>(null);
 
 export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ModeName>("light");
-  const [language, setLanguage] = useState("Spanish");
+  const [language, setLanguage] = useState("English");
   const [notifications, setNotifications] = useState(true);
   const [calendarSync, setCalendarSync] = useState(false);
 

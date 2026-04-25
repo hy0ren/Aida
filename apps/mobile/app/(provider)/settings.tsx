@@ -88,7 +88,7 @@ export default function ProviderSettingsScreen() {
         </Card>
 
         <SecondaryButton
-          onPress={() => router.dismissTo("/(auth)/login")}
+          onPress={() => router.replace("/(auth)/login?mode=login")}
           icon="logout"
           label="Log out"
         />

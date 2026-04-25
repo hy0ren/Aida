@@ -13,7 +13,10 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: "#eff4f1" },
         }}
       >
-        <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="(auth)"
+          options={{ animation: "slide_from_right", animationTypeForReplace: "pop" }}
+        />
         <Stack.Screen name="(patient)" />
         <Stack.Screen name="(provider)" />
       </Stack>
