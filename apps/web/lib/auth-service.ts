@@ -17,6 +17,8 @@ export interface UserDocument {
   authProvider: "password" | "google" | "worldcoin" | "apple";
   externalAuthId?: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   role: "patient" | "parent" | "provider" | "admin";
   timezone?: string;
@@ -47,6 +49,8 @@ export interface AuthUser {
   email: string;
   emailNormalized?: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   role?: "patient" | "parent" | "provider" | "admin";
   timezone?: string;
@@ -109,12 +113,30 @@ function toIso(value?: Date): string | undefined {
   return value ? value.toISOString() : undefined;
 }
 
+function splitFullName(name?: string): { firstName?: string; lastName?: string } {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" ") || undefined,
+  };
+}
+
+function joinName(firstName?: string, lastName?: string, fallback?: string): string | undefined {
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  return fullName || fallback;
+}
+
 function serializeUser(user: UserDocument & { _id?: unknown }): AuthUser {
+  const legacyName = splitFullName(user.name);
+  const firstName = user.firstName ?? legacyName.firstName;
+  const lastName = user.lastName ?? legacyName.lastName;
   return {
     id: String(user._id),
     email: user.email,
     emailNormalized: user.emailNormalized ?? normalizeEmail(user.email),
-    name: user.name,
+    name: joinName(firstName, lastName, user.name),
+    firstName,
+    lastName,
     phone: user.phone,
     role: user.role,
     timezone: user.timezone,
@@ -151,7 +173,13 @@ export function verifyToken(token: string): { sub: string; email: string } | nul
  * Register a new user with email + password.
  * Returns a JWT on success.
  */
-export async function signup(email: string, password: string, name?: string): Promise<AuthResult> {
+export async function signup(
+  email: string,
+  password: string,
+  name?: string,
+  firstName?: string,
+  lastName?: string,
+): Promise<AuthResult> {
   if (!email || !password) {
     return { ok: false, error: "Email and password are required." };
   }
@@ -170,7 +198,9 @@ export async function signup(email: string, password: string, name?: string): Pr
         id: "demo-user-id",
         email,
         emailNormalized: normalizeEmail(email),
-        name,
+        name: joinName(firstName, lastName, name),
+        firstName: firstName ?? splitFullName(name).firstName,
+        lastName: lastName ?? splitFullName(name).lastName,
         role: "patient",
         onboardingComplete: false,
         accountStatus: "active",
@@ -194,12 +224,18 @@ export async function signup(email: string, password: string, name?: string): Pr
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const now = new Date();
+  const splitName = splitFullName(name);
+  const resolvedFirstName = firstName ?? splitName.firstName;
+  const resolvedLastName = lastName ?? splitName.lastName;
+  const fullName = joinName(resolvedFirstName, resolvedLastName, name);
 
   const result = await col.insertOne({
     email: emailNormalized,
     emailNormalized,
     passwordHash,
-    name: name ?? undefined,
+    name: fullName,
+    firstName: resolvedFirstName,
+    lastName: resolvedLastName,
     phone: undefined,
     authProvider: "password",
     role: "patient",
@@ -231,7 +267,9 @@ export async function signup(email: string, password: string, name?: string): Pr
       id: userId,
       email: emailNormalized,
       emailNormalized,
-      name,
+      name: fullName,
+      firstName: resolvedFirstName,
+      lastName: resolvedLastName,
       role: "patient",
       onboardingComplete: false,
       accountStatus: "active",
@@ -309,9 +347,15 @@ export async function login(email: string, password: string): Promise<AuthResult
   const userId = user._id!.toString();
   const token = signToken(userId, user.email);
   const now = new Date();
+  const splitName = splitFullName(user.name);
+  const resolvedFirstName = user.firstName ?? splitName.firstName;
+  const resolvedLastName = user.lastName ?? splitName.lastName;
   const normalizedUser = {
     emailNormalized: user.emailNormalized ?? normalizeEmail(user.email),
     authProvider: user.authProvider ?? "password",
+    firstName: resolvedFirstName,
+    lastName: resolvedLastName,
+    name: joinName(resolvedFirstName, resolvedLastName, user.name),
     role: user.role ?? "patient",
     onboardingComplete: user.onboardingComplete ?? false,
     accountStatus: user.accountStatus ?? "active",
@@ -374,6 +418,8 @@ export async function updateUserProfile(
     role?: "patient" | "parent" | "provider" | "admin";
     language?: string;
     name?: string;
+    firstName?: string;
+    lastName?: string;
     phone?: string;
     timezone?: string;
     notificationsEnabled?: boolean;
@@ -406,7 +452,16 @@ export async function updateUserProfile(
   if (typeof data.onboardingComplete === "boolean") updateData.onboardingComplete = data.onboardingComplete;
   if (data.role) updateData.role = data.role;
   if (typeof data.language === "string") updateData.language = data.language;
+  if (typeof data.firstName === "string") updateData.firstName = data.firstName;
+  if (typeof data.lastName === "string") updateData.lastName = data.lastName;
   if (typeof data.name === "string") updateData.name = data.name;
+  if (typeof data.firstName === "string" || typeof data.lastName === "string") {
+    updateData.name = joinName(
+      data.firstName ?? existing.firstName,
+      data.lastName ?? existing.lastName,
+      data.name ?? existing.name,
+    );
+  }
   if (typeof data.phone === "string") updateData.phone = data.phone;
   if (typeof data.timezone === "string") updateData.timezone = data.timezone;
   if (typeof data.notificationsEnabled === "boolean") updateData.notificationsEnabled = data.notificationsEnabled;

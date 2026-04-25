@@ -11,7 +11,8 @@ async function main() {
     process.exit(1);
   }
 
-  const model = "gemini-2.5-flash-lite";
+  // Keep in sync with apps/web/lib/gemini-model.ts
+  const model = "gemini-2.5-flash";
   console.log(`[INFO] Calling Gemini (${model}) with a tiny sanity prompt...`);
 
   const ai = new GoogleGenAI({ apiKey });

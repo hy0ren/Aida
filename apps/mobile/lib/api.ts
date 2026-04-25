@@ -47,6 +47,8 @@ export type AuthUser = {
   email: string;
   emailNormalized?: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   role?: "patient" | "parent" | "provider" | "admin";
   timezone?: string;
@@ -70,8 +72,14 @@ export type AuthUser = {
   updatedAt?: string;
 };
 
-export async function authSignup(email: string, password: string, name?: string): Promise<AuthResponse> {
-  return apiPost<AuthResponse>('/auth/signup', { email, password, name });
+export async function authSignup(
+  email: string,
+  password: string,
+  firstName?: string,
+  lastName?: string,
+): Promise<AuthResponse> {
+  const name = [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
+  return apiPost<AuthResponse>('/auth/signup', { email, password, name, firstName, lastName });
 }
 
 export async function authLogin(email: string, password: string): Promise<AuthResponse> {

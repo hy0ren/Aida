@@ -30,7 +30,7 @@ The app is built for people who face friction when trying to get care, especiall
 - **Mobile:** Expo, React Native, Expo Router, NativeWind
 - **Backend:** Next.js API routes
 - **Database:** MongoDB Atlas
-- **AI Summary:** Google Gemini 2.5 Flash-Lite
+- **AI Summary:** Google Gemini API (Gemini 2.5 Flash)
 - **On-device AI:** ZETIC Melange
 - **Voice Agent:** ElevenLabs
 - **SMS:** Twilio

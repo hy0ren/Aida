@@ -134,12 +134,15 @@ export interface ListAppointmentsData {
   items: AppointmentResponse[];
 }
 
-export interface SmsResponse {
-  smsId: string;
+export interface ConfirmationMessageResponse {
+  confirmationId: string;
   patientId: string;
   appointmentId: string;
+  channel: 'expo-push' | 'in-app';
   to: string;
   language: string;
-  status: 'queued' | 'sent' | 'failed';
+  status: 'queued' | 'sent' | 'logged' | 'failed';
+  title: string;
   message: string;
+  expoTicketId?: string;
 }

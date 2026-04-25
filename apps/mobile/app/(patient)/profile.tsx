@@ -63,7 +63,7 @@ export default function ProfileScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 20, fontWeight: "900" }}>
-                {patientProfile.name}
+                {patientProfile.firstName} {patientProfile.lastName}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
                 {role === "parent" ? "Parent account" : "Patient account"}
@@ -133,9 +133,14 @@ export default function ProfileScreen() {
           <SectionTitle>Profile details</SectionTitle>
           <View style={{ gap: 12 }}>
             <Field
-              label="Display name"
-              value={patientProfile.name}
-              onChangeText={(name) => updatePatientProfile({ name })}
+              label="First name"
+              value={patientProfile.firstName}
+              onChangeText={(firstName) => updatePatientProfile({ firstName })}
+            />
+            <Field
+              label="Last name"
+              value={patientProfile.lastName}
+              onChangeText={(lastName) => updatePatientProfile({ lastName })}
             />
             <Field
               label="Phone"

@@ -17,7 +17,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TOKEN_KEY, updateAuthProfile, type AuthUser } from "../lib/api";
+import { TOKEN_KEY, getAuthProfile, updateAuthProfile, type AuthUser } from "../lib/api";
 
 export const colors = {
   ink: "#17211f",
@@ -57,7 +57,8 @@ export const paletteOptions: Record<
 const paletteKeys = Object.keys(paletteOptions) as PaletteName[];
 
 export type PatientProfile = {
-  name: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   timezone: string;
   emergencyContact: string;
@@ -78,7 +79,8 @@ const SWITCH_ACTIVE = "#22c55e";
 const STORAGE_KEY = "aida.demoState.v1";
 
 const defaultPatientProfile: PatientProfile = {
-  name: demoData.patient.name,
+  firstName: demoData.patient.firstName,
+  lastName: demoData.patient.lastName,
   phone: demoData.patient.phone,
   timezone: demoData.patient.timezone,
   emergencyContact: demoData.patient.emergencyContact,
@@ -96,6 +98,14 @@ const defaultProviderProfile: ProviderProfile = {
 
 export function getHomeRouteForRole(role: AidaRole) {
   return role === "provider" ? "/(provider)/dashboard" : "/(patient)/home";
+}
+
+function splitFullName(name?: string): Pick<PatientProfile, "firstName" | "lastName"> {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  return {
+    firstName: parts[0] ?? defaultPatientProfile.firstName,
+    lastName: parts.slice(1).join(" ") || defaultPatientProfile.lastName,
+  };
 }
 
 type ThemeState = {
@@ -208,7 +218,12 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
           setCalendarSync(saved.calendarSync);
         }
         if (saved.patientProfile) {
-          setPatientProfile({ ...defaultPatientProfile, ...saved.patientProfile });
+          const profile = saved.patientProfile as Partial<PatientProfile> & { name?: string };
+          setPatientProfile({
+            ...defaultPatientProfile,
+            ...splitFullName(profile.name),
+            ...profile,
+          });
         }
         if (saved.providerProfile) {
           setProviderProfile({ ...defaultProviderProfile, ...saved.providerProfile });
@@ -279,7 +294,9 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
             timezone: providerProfile.timezone,
           }
         : {
-            name: patientProfile.name,
+            firstName: patientProfile.firstName,
+            lastName: patientProfile.lastName,
+            name: `${patientProfile.firstName} ${patientProfile.lastName}`.trim(),
             phone: patientProfile.phone,
             timezone: patientProfile.timezone,
           };
@@ -358,11 +375,17 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       setCalendarSync(user.calendarSyncEnabled);
     }
     if (user.patientProfile) {
-      setPatientProfile({ ...defaultPatientProfile, ...(user.patientProfile as Partial<PatientProfile>) });
+      const profile = user.patientProfile as Partial<PatientProfile> & { name?: string };
+      setPatientProfile({
+        ...defaultPatientProfile,
+        ...splitFullName(profile.name ?? user.name),
+        ...profile,
+      });
     } else if (user.name || user.phone || user.timezone) {
+      const splitName = splitFullName(user.name);
       setPatientProfile((current) => ({
         ...current,
-        name: user.name ?? current.name,
+        ...splitName,
         phone: user.phone ?? current.phone,
         timezone: user.timezone ?? current.timezone,
       }));
@@ -371,6 +394,16 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       setProviderProfile({ ...defaultProviderProfile, ...(user.providerProfile as Partial<ProviderProfile>) });
     }
   }, []);
+
+  useEffect(() => {
+    if (!isReady || !isLoggedIn || !userId) return;
+
+    void getAuthProfile()
+      .then(({ user }) => applyAuthUser(user))
+      .catch((error) => {
+        console.warn("Unable to refresh Aida profile", error);
+      });
+  }, [applyAuthUser, isLoggedIn, isReady, userId]);
 
   const logout = useCallback(() => {
     setIsLoggedIn(false);

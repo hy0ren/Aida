@@ -45,7 +45,8 @@ export default function OnboardingScreen() {
     theme,
   } = useAidaTheme();
   const [role, setRole] = useState<AidaRole>(savedRole);
-  const [name, setName] = useState(patientProfile.name);
+  const [firstName, setFirstName] = useState(patientProfile.firstName);
+  const [lastName, setLastName] = useState(patientProfile.lastName);
   const [phone, setPhone] = useState(patientProfile.phone);
   const [timezone, setTimezone] = useState(patientProfile.timezone);
   const [emergencyContact, setEmergencyContact] = useState(patientProfile.emergencyContact);
@@ -102,7 +103,8 @@ export default function OnboardingScreen() {
     }
 
     const nextPatientProfile = {
-      name,
+      firstName,
+      lastName,
       phone,
       timezone,
       emergencyContact,
@@ -118,7 +120,11 @@ export default function OnboardingScreen() {
     try {
       await updateAuthProfile({
         role,
-        name: isProvider ? nextProviderProfile.clinicName : nextPatientProfile.name,
+        firstName: isProvider ? undefined : nextPatientProfile.firstName,
+        lastName: isProvider ? undefined : nextPatientProfile.lastName,
+        name: isProvider
+          ? nextProviderProfile.clinicName
+          : `${nextPatientProfile.firstName} ${nextPatientProfile.lastName}`.trim(),
         phone: isProvider ? nextProviderProfile.phone : nextPatientProfile.phone,
         timezone: isProvider ? nextProviderProfile.timezone : nextPatientProfile.timezone,
         language,
@@ -303,7 +309,8 @@ export default function OnboardingScreen() {
           <Card>
             <Text style={[sectionTitle, { color: theme.ink }]}>Profile</Text>
             <View style={{ gap: 10 }}>
-              <Field label="Name" value={name} onChangeText={setName} />
+              <Field label="First name" value={firstName} onChangeText={setFirstName} />
+              <Field label="Last name" value={lastName} onChangeText={setLastName} />
               <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
               <Field label="Timezone" value={timezone} onChangeText={setTimezone} />
               <Field label="Emergency contact" value={emergencyContact} onChangeText={setEmergencyContact} />

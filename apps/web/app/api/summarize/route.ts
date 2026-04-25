@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { AIDA_GEMINI_MODEL } from '../../../lib/gemini-model';
 import { demoSummaryResponse } from '../_mock/aida-demo';
-
-const MODEL_NAME = 'gemini-2.5-flash-lite';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -27,7 +26,7 @@ export async function POST(req: Request) {
     const targetLanguage = body.language || 'English';
 
     const response = await ai.models.generateContent({
-      model: MODEL_NAME,
+      model: AIDA_GEMINI_MODEL,
       contents: promptData,
       config: {
         systemInstruction: `You are Aida, an AI medical summarizer. Summarize the following on-device preprocessed biometric data in a non-clinical, reassuring way for the patient. Highlight flagged metrics. The summary must be natively written in ${targetLanguage}. Keep it under 3 paragraphs. Don't include markdown formatting.`,

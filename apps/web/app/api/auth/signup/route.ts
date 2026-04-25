@@ -4,9 +4,9 @@ import { signup } from "@/lib/auth-service";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password, name } = body;
+    const { email, password, name, firstName, lastName } = body;
 
-    const result = await signup(email, password, name);
+    const result = await signup(email, password, name, firstName, lastName);
 
     if (!result.ok) {
       return NextResponse.json(

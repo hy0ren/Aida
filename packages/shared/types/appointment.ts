@@ -6,5 +6,6 @@ export interface Appointment {
   scheduledAt: Date;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   biometricSummaryId?: string;
-  smsConfirmationSent: boolean;
+  confirmationSent: boolean;
+  confirmationChannel?: 'expo-push' | 'in-app';
 }

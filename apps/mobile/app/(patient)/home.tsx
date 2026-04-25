@@ -44,11 +44,11 @@ const todaysMetrics: {
 }));
 
 export default function HomeScreen() {
-  const { theme, mode, language } = useAidaTheme();
+  const { theme, mode, language, patientProfile } = useAidaTheme();
   return (
     <Screen
       title="Biometrics"
-      subtitle={`Good morning, ${demoData.patient.name.split(" ")[0]}. Your recent data is ready for review.`}
+      subtitle={`Good morning, ${patientProfile.firstName}. Your recent data is ready for review.`}
       action={<Pill label={language} icon="translate" tone={colors.plum} />}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>

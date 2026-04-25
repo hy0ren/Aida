@@ -6,6 +6,8 @@ export interface DemoPatientProfile {
   id: string;
   worldIdProof: string;
   role: "patient" | "parent";
+  firstName: string;
+  lastName: string;
   name: string;
   age: number;
   dob: string;
@@ -15,7 +17,7 @@ export interface DemoPatientProfile {
   preferredLanguage: {
     code: DemoLanguageCode;
     label: string;
-    smsLabel: string;
+    confirmationLabel: string;
   };
   createdAt: string;
 }
@@ -92,15 +94,18 @@ export interface DemoSelectedAppointment {
   visitType: string;
   reason: string;
   bookedBy: string;
-  smsConfirmationSent: boolean;
+  confirmationSent: boolean;
+  confirmationChannel: "expo-push";
 }
 
-export interface DemoSmsReceipt {
+export interface DemoConfirmationReceipt {
   id: string;
   appointmentId: string;
   sentAt: string;
   toMasked: string;
   language: DemoLanguageCode;
+  channel: "expo-push" | "in-app";
+  title: string;
   body: string;
 }
 
@@ -154,7 +159,7 @@ export interface DemoData {
   healthSummary: DemoHealthSummary;
   providers: DemoProviderClinic[];
   selectedAppointment: DemoSelectedAppointment;
-  smsReceipt: DemoSmsReceipt;
+  confirmationReceipt: DemoConfirmationReceipt;
   providerIntake: DemoProviderIntakeDetails;
   appointmentHistory: DemoAppointmentHistoryItem[];
 }
@@ -163,6 +168,8 @@ const patient: DemoPatientProfile = {
   id: "patient-elena-morales",
   worldIdProof: "worldid-demo-proof-elena-morales",
   role: "patient",
+  firstName: "Elena",
+  lastName: "Morales",
   name: "Elena Morales",
   age: 38,
   dob: "1988-02-14",
@@ -172,7 +179,7 @@ const patient: DemoPatientProfile = {
   preferredLanguage: {
     code: "es",
     label: "Spanish",
-    smsLabel: "espanol",
+    confirmationLabel: "espanol",
   },
   createdAt: "2026-04-25T08:30:00-07:00",
 };
@@ -227,7 +234,8 @@ const selectedAppointment: DemoSelectedAppointment = {
   visitType: "General care",
   reason: "Elevated resting heart rate and fatigue",
   bookedBy: "AI-booked intake",
-  smsConfirmationSent: true,
+  confirmationSent: true,
+  confirmationChannel: "expo-push",
 };
 
 export const demoData: DemoData = {
@@ -328,14 +336,16 @@ export const demoData: DemoData = {
   },
   providers,
   selectedAppointment,
-  smsReceipt: {
-    id: "sms-2026-05-06-bayview",
+  confirmationReceipt: {
+    id: "confirm-2026-05-06-bayview",
     appointmentId: selectedAppointment.id,
     sentAt: "2026-04-25T09:18:00-07:00",
-    toMasked: "+1 (415) ***-4729",
+    toMasked: "Expo push token ending 4729",
     language: "es",
+    channel: "expo-push",
+    title: "Cita confirmada",
     body:
-      "Aida: Cita confirmada con Dr. Lin Chen el miercoles 6 de mayo a las 2:30 PM. Responde CANCELAR para anular.",
+      "Aida: Cita confirmada con Dr. Lin Chen el miercoles 6 de mayo a las 2:30 PM. Abre Aida para ver que traer.",
   },
   providerIntake: {
     clinicEmail: "frontdesk@bayview.example",
