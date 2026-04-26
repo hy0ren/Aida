@@ -1,5 +1,10 @@
 import { ObjectId } from "mongodb";
-import { demoData, type SummaryResponse } from "@aida/shared";
+import {
+  demoData,
+  type ListSummariesData,
+  type SummaryHistoryItem,
+  type SummaryResponse,
+} from "@aida/shared";
 import { demoSummaryResponse } from "@/app/api/_mock/aida-demo";
 import { AIDA_GEMINI_MODEL } from "@/lib/gemini-model";
 import { collections, getDb, isMongoConfigured } from "@/lib/mongodb";
@@ -102,4 +107,76 @@ export async function generateBiometricSummary(
 
   await persistSummary(data, "gemini");
   return { data, source: "gemini" };
+}
+
+export async function listSummariesByPatientId(
+  patientId: string,
+): Promise<{ data: ListSummariesData; source: "database" | "demo" }> {
+  if (!isMongoConfigured()) {
+    return {
+      data: {
+        items: [
+          {
+            ...demoSummaryResponse,
+            createdAt: demoData.selectedAppointment.scheduledAt,
+            source: "demo",
+            approvedByPatient: true,
+          },
+        ],
+      },
+      source: "demo",
+    };
+  }
+
+  const db = await getDb();
+  if (!db) {
+    return { data: { items: [] }, source: "demo" };
+  }
+
+  const docs = await db
+    .collection(collections.biometricSummaries)
+    .find({ patientId }, { sort: { createdAt: -1 } })
+    .project({
+      _id: 0,
+      summaryId: 1,
+      patientId: 1,
+      uploadId: 1,
+      specialtyRecommendation: 1,
+      urgency: 1,
+      summary: 1,
+      shareItems: 1,
+      biometricHighlights: 1,
+      source: 1,
+      approvedByPatient: 1,
+      createdAt: 1,
+    })
+    .toArray();
+
+  const items: SummaryHistoryItem[] = docs.map((doc) => {
+    const created = doc.createdAt;
+    const createdAt =
+      created instanceof Date
+        ? created.toISOString()
+        : created != null
+          ? new Date(created as string | number).toISOString()
+          : new Date(0).toISOString();
+
+    return {
+      summaryId: String(doc.summaryId),
+      patientId: String(doc.patientId),
+      uploadId: String(doc.uploadId),
+      specialtyRecommendation: String(doc.specialtyRecommendation),
+      urgency: doc.urgency as SummaryHistoryItem["urgency"],
+      summary: String(doc.summary),
+      shareItems: Array.isArray(doc.shareItems) ? doc.shareItems as string[] : [],
+      biometricHighlights: Array.isArray(doc.biometricHighlights)
+        ? doc.biometricHighlights as SummaryHistoryItem["biometricHighlights"]
+        : [],
+      source: doc.source === "gemini" ? "gemini" : "demo",
+      approvedByPatient: Boolean(doc.approvedByPatient),
+      createdAt,
+    };
+  });
+
+  return { data: { items }, source: "database" };
 }

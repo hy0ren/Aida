@@ -1,5 +1,30 @@
 import { NextResponse } from 'next/server';
-import { generateBiometricSummary, type SummaryRequestBody } from '@/lib/summary-service';
+import {
+  generateBiometricSummary,
+  listSummariesByPatientId,
+  type SummaryRequestBody,
+} from '@/lib/summary-service';
+
+export async function GET(req: Request) {
+  const patientId = new URL(req.url).searchParams.get('patientId');
+  if (!patientId?.trim()) {
+    return NextResponse.json(
+      { ok: false, error: 'Query parameter patientId is required' },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const { data } = await listSummariesByPatientId(patientId.trim());
+    return NextResponse.json({ ok: true, data });
+  } catch (error) {
+    console.error('Summary history fetch error:', error);
+    return NextResponse.json(
+      { ok: false, error: 'Failed to list AI summaries.' },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as SummaryRequestBody;

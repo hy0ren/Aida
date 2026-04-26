@@ -69,6 +69,16 @@ export interface SummaryResponse {
   biometricHighlights: BiometricMetric[];
 }
 
+export interface SummaryHistoryItem extends SummaryResponse {
+  createdAt: string;
+  source?: 'gemini' | 'demo';
+  approvedByPatient?: boolean;
+}
+
+export interface ListSummariesData {
+  items: SummaryHistoryItem[];
+}
+
 export interface ProviderOption {
   id: string;
   name: string;

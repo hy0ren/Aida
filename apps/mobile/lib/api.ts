@@ -6,6 +6,7 @@ import type {
   FindProvidersResponse,
   InsuranceVerificationResponse,
   ListAppointmentsData,
+  ListSummariesData,
   ListUploadsData,
   SummaryResponse,
   UploadResponse,
@@ -181,6 +182,10 @@ export function createAppointment(body: { callSessionId?: string; providerId?: s
 
 export function listUploads(patientId: string) {
   return apiGet<ListUploadsData>(`/upload?${new URLSearchParams({ patientId }).toString()}`);
+}
+
+export function listSummaries(patientId: string) {
+  return apiGet<ListSummariesData>(`/summarize?${new URLSearchParams({ patientId }).toString()}`);
 }
 
 export function listAppointments(patientId: string) {
