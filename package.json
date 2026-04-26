@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "mobile": "npm run start --workspace=mobile",
-    "web": "npm run dev --workspace=web"
+    "web": "npm run dev --workspace=web",
+    "mongo:server": "docker start aida-mongo 2>/dev/null || docker run -d -p 27017:27017 -v aida_mongo_data:/data/db --name aida-mongo mongo:7"
   },
   "dependencies": {
     "mongodb": "^7.2.0"

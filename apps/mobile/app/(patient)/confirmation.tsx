@@ -33,9 +33,22 @@ export default function ConfirmationScreen() {
           expoPushToken,
           language,
         });
-        if (!expoPushToken) {
-          await showLocalConfirmationAsync(confirmationResponse.title, confirmationResponse.message);
+
+        // Remote Expo push cannot be delivered in Expo Go (SDK 53+) or on
+        // simulators/emulators. Whenever the server did not successfully send a
+        // remote push, fall back to a local notification so the confirmation is
+        // still visible in the demo.
+        if (confirmationResponse.status !== "sent") {
+          await showLocalConfirmationAsync(
+            confirmationResponse.title,
+            confirmationResponse.message,
+            {
+              type: "appointment-confirmation",
+              appointmentId: appointmentResponse.appointmentId,
+            },
+          );
         }
+
         if (!mounted) return;
         setAppointment(appointmentResponse);
         setConfirmation(confirmationResponse);
