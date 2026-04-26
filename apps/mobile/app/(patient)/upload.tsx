@@ -25,7 +25,7 @@ const intakeNotes = demoData.healthSummary.notesForAida;
 
 export default function UploadScreen() {
   const router = useRouter();
-  const { theme, mode } = useAidaTheme();
+  const { theme, mode, userId } = useAidaTheme();
 
   // Insurance card state
   const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
@@ -84,6 +84,7 @@ export default function UploadScreen() {
 
     try {
       const response = await uploadPatientIntake({
+        patientId: userId,
         insuranceComplete,
         healthComplete,
         healthSource,

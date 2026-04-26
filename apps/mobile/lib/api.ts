@@ -48,6 +48,7 @@ export type AuthUser = {
   email: string;
   emailNormalized?: string;
   name?: string;
+  avatarUrl?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
@@ -86,6 +87,10 @@ export async function authSignup(
 
 export async function authLogin(email: string, password: string): Promise<AuthResponse> {
   return apiPost<AuthResponse>('/auth/login', { email, password });
+}
+
+export async function authGoogle(accessToken: string): Promise<AuthResponse> {
+  return apiPost<AuthResponse>('/auth/google', { accessToken });
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
@@ -146,6 +151,7 @@ export function getAuthProfile() {
 }
 
 export function uploadPatientIntake(body: {
+  patientId?: string;
   insuranceComplete: boolean;
   healthComplete: boolean;
   healthSource: string;
@@ -160,11 +166,11 @@ export function uploadPatientIntake(body: {
   return apiPost<UploadResponse>('/upload', body);
 }
 
-export function summarizeUpload(body: { uploadId?: string; patientId?: string; language?: string }) {
+export function summarizeUpload(body: { uploadId?: string; patientId?: string; patientName?: string; language?: string }) {
   return apiPost<SummaryResponse>('/summarize', body);
 }
 
-export function findProviders(body: { summaryId?: string; patientId?: string }) {
+export function findProviders(body: { summaryId?: string; patientId?: string; language?: string }) {
   return apiPost<FindProvidersResponse>('/book/find-providers', body);
 }
 
@@ -175,13 +181,15 @@ export function verifyInsurance(body: { providerId?: string; patientId?: string 
 export function initiateCall(body: {
   providerId?: string;
   patientId?: string;
+  patientName?: string;
+  language?: string;
   summaryId?: string;
   toNumber?: string;
 }) {
   return apiPost<CallSessionResponse>('/book/initiate-call', body);
 }
 
-export function createAppointment(body: { callSessionId?: string; providerId?: string }) {
+export function createAppointment(body: { callSessionId?: string; providerId?: string; patientId?: string }) {
   return apiPost<AppointmentResponse>('/appointments', body);
 }
 
@@ -200,8 +208,12 @@ export function listAppointments(patientId: string) {
 export function sendAppointmentConfirmation(body: {
   appointmentId?: string;
   patientId?: string;
+  patientName?: string;
   expoPushToken?: string;
   language?: string;
+  doctor?: string;
+  clinicName?: string;
+  scheduledAt?: string;
 }) {
   return apiPost<ConfirmationMessageResponse>('/confirmations', body);
 }

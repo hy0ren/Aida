@@ -8,6 +8,8 @@ type InitiateCallBody = {
   providerId?: string;
   patientId?: string;
   summaryId?: string;
+  patientName?: string;
+  language?: string;
   toNumber?: string;
 };
 
@@ -23,12 +25,11 @@ function resolveToNumber(body: InitiateCallBody) {
 }
 
 export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as InitiateCallBody;
   try {
-    const body = (await req.json().catch(() => ({}))) as InitiateCallBody;
     const providerId = body.providerId;
-    const baseSession = callSessionResponse(providerId);
+    const baseSession = callSessionResponse(providerId, body.patientName);
     const toNumber = resolveToNumber(body);
-    
     const apiKey = process.env.ELEVENLABS_API_KEY;
     const agentId = process.env.ELEVENLABS_AGENT_ID;
     const agentPhoneNumberId = process.env.ELEVENLABS_AGENT_PHONE_NUMBER_ID;
@@ -68,12 +69,12 @@ export async function POST(req: Request) {
         to_number: toNumber,
         conversation_initiation_client_data: {
           dynamic_variables: {
-            patient_name: "Elena Morales",
+            patient_name: body.patientName || "the patient",
             clinic_name: baseSession.clinicName,
             provider_name: baseSession.appointment.doctor,
             specialty: baseSession.appointment.specialty,
             appointment_reason: "Elevated resting heart rate and fatigue",
-            preferred_language: "Spanish",
+            preferred_language: body.language || "English",
             summary_id: body.summaryId ?? "",
             patient_id: body.patientId ?? baseSession.patientId,
           },
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       data: {
-        ...callSessionResponse(),
+        ...callSessionResponse(body.providerId, body.patientName),
         toNumber: process.env.ELEVENLABS_DEFAULT_TO_NUMBER,
         liveCall: false,
         warning: "Live call initiation failed; returned demo call session.",

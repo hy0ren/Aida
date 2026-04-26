@@ -6,12 +6,14 @@ import {
   type SummaryResponse,
 } from "@aida/shared";
 import { demoSummaryResponse } from "@/app/api/_mock/aida-demo";
+import { getUserById } from "@/lib/auth-service";
 import { AIDA_GEMINI_MODEL } from "@/lib/gemini-model";
 import { collections, getDb, isMongoConfigured } from "@/lib/mongodb";
 
 export type SummaryRequestBody = {
   uploadId?: string;
   patientId?: string;
+  patientName?: string;
   language?: string;
   biometrics?: unknown;
 };
@@ -23,6 +25,13 @@ type GeminiGenerateContentResponse = {
     };
   }>;
 };
+
+async function resolvePatientName(body: SummaryRequestBody): Promise<string | undefined> {
+  if (body.patientName?.trim()) return body.patientName.trim();
+  if (!body.patientId?.trim()) return undefined;
+  const result = await getUserById(body.patientId).catch(() => null);
+  return result?.user?.name;
+}
 
 async function persistSummary(data: SummaryResponse, source: "gemini" | "demo") {
   if (!isMongoConfigured()) return;
@@ -40,22 +49,36 @@ async function persistSummary(data: SummaryResponse, source: "gemini" | "demo") 
 }
 
 function buildDemoSummary(body: SummaryRequestBody): SummaryResponse {
+  const patientName = body.patientName?.trim() || "the patient";
+  const targetLanguage = body.language || "English";
+  const patientFirstName = patientName.split(/\s+/)[0] || patientName;
+  const summary = demoSummaryResponse.summary
+    .replace(/Elena Morales/g, patientName)
+    .replace(/Elena/g, patientFirstName)
+    .replace(/patient prefers Spanish updates when possible/gi, `patient prefers ${targetLanguage} updates when possible`);
+
   return {
     ...demoSummaryResponse,
     summaryId: `sum-${new ObjectId().toString()}`,
     patientId: body.patientId ?? demoSummaryResponse.patientId,
     uploadId: body.uploadId ?? demoSummaryResponse.uploadId,
+    summary,
+    shareItems: demoSummaryResponse.shareItems.map((item) =>
+      item.replace(/Spanish/g, targetLanguage),
+    ),
   };
 }
 
 export async function generateBiometricSummary(
   body: SummaryRequestBody,
 ): Promise<{ data: SummaryResponse; source: "gemini" | "demo" }> {
-  const targetLanguage = body.language || demoData.patient.preferredLanguage.label;
+  const resolvedPatientName = await resolvePatientName(body);
+  const requestBody = { ...body, patientName: resolvedPatientName ?? body.patientName };
+  const targetLanguage = body.language || "English";
 
   if (!process.env.GEMINI_API_KEY) {
     console.warn("GEMINI_API_KEY missing, falling back to mock summary");
-    const data = buildDemoSummary(body);
+    const data = buildDemoSummary(requestBody);
     await persistSummary(data, "demo");
     return { data, source: "demo" };
   }
@@ -77,7 +100,7 @@ export async function generateBiometricSummary(
         systemInstruction: {
           parts: [
             {
-              text: `You are Aida, an AI medical summarizer. Summarize on-device preprocessed biometric data in a non-clinical, reassuring way for the patient. Highlight flagged metrics. The summary must be natively written in ${targetLanguage}. Keep it under 3 paragraphs. Do not include markdown formatting.`,
+              text: `You are Aida, an AI medical summarizer. Summarize on-device preprocessed biometric data in a non-clinical, reassuring way for ${requestBody.patientName?.trim() || "the patient"}. Highlight flagged metrics. The summary must be natively written in ${targetLanguage}. Keep it under 3 paragraphs. Do not include markdown formatting.`,
             },
           ],
         },
@@ -102,7 +125,7 @@ export async function generateBiometricSummary(
     .join("\n")
     .trim();
   const data: SummaryResponse = {
-    ...buildDemoSummary(body),
+    ...buildDemoSummary(requestBody),
     summary: summaryText && summaryText.length > 0
       ? summaryText
       : demoSummaryResponse.summary,

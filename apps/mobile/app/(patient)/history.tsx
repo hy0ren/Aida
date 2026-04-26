@@ -5,25 +5,29 @@ import { listSummaries } from "../../lib/api";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function HistoryScreen() {
-  const { theme, userId } = useAidaTheme();
+  const { theme, userId, language, patientProfile } = useAidaTheme();
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
   const [summaries, setSummaries] = useState<SummaryHistoryItem[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const patientId = userId ?? demoData.patient.id;
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
 
   const fallbackSummaries = useMemo<SummaryHistoryItem[]>(
     () => [
       {
         summaryId: demoData.healthSummary.id,
-        patientId: demoData.patient.id,
+        patientId,
         uploadId: "upload-elena-2026-04-25",
         specialtyRecommendation: demoData.selectedAppointment.visitType,
         urgency: "soon",
-        summary: demoData.healthSummary.approvedSummary,
+        summary: demoData.healthSummary.approvedSummary
+          .replace(/Elena Morales/g, patientName)
+          .replace(/Elena/g, patientProfile.firstName)
+          .replace(/Spanish/g, language),
         shareItems: [
           "Approved clinician summary",
           `${demoData.insurance.carrier} ${demoData.insurance.plan} insurance details`,
-          `Preferred language: ${demoData.patient.preferredLanguage.label}`,
+          `Preferred language: ${language}`,
         ],
         biometricHighlights: [],
         createdAt: demoData.patient.createdAt,
@@ -31,7 +35,7 @@ export default function HistoryScreen() {
         approvedByPatient: true,
       },
     ],
-    [],
+    [language, patientId, patientName, patientProfile.firstName],
   );
 
   useEffect(() => {

@@ -1,5 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import Constants from "expo-constants";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import { ResponseType, getDefaultReturnUrl, getRedirectUrl, makeRedirectUri } from "expo-auth-session";
 import {
   ActivityIndicator,
   Alert,
@@ -19,8 +23,36 @@ import {
   getHomeRouteForRole,
   useAidaTheme,
 } from "../../components/aida";
-import { authLogin, authSignup, TOKEN_KEY } from "../../lib/api";
+import { authGoogle, authLogin, authSignup, TOKEN_KEY } from "../../lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_EXPO_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID
+  || "837185143326-k05fjad97srq3m9iee3osdbr70cgkn51.apps.googleusercontent.com";
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+  || "837185143326-v8s27jl841cesgta6h5n1vlvnj6o55sg.apps.googleusercontent.com";
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+  || "837185143326-k05fjad97srq3m9iee3osdbr70cgkn51.apps.googleusercontent.com";
+const GOOGLE_REDIRECT_URI = process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI;
+const GOOGLE_IOS_REVERSED_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_REVERSED_CLIENT_ID
+  || "com.googleusercontent.apps.837185143326-v8s27jl841cesgta6h5n1vlvnj6o55sg:/oauthredirect";
+
+function getExpoProxyRedirectUri() {
+  if (GOOGLE_REDIRECT_URI) return GOOGLE_REDIRECT_URI;
+  try {
+    return getRedirectUrl();
+  } catch {
+    return "https://auth.expo.io/@anonymous/mobile";
+  }
+}
+
+function getTokenFromAuthUrl(url: string) {
+  const [, hash = ""] = url.split("#");
+  const query = url.includes("?") ? url.split("?")[1]?.split("#")[0] ?? "" : "";
+  return new URLSearchParams(hash || query).get("access_token");
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -32,6 +64,36 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const isExpoGo = Constants.appOwnership === "expo";
+  const redirectUri = isExpoGo
+    ? getExpoProxyRedirectUri()
+    : makeRedirectUri({
+        scheme: "aida",
+        native: Platform.OS === "ios" ? GOOGLE_IOS_REVERSED_CLIENT_ID : undefined,
+        path: "oauthredirect",
+      });
+  const googleConfig = isExpoGo
+    ? ({
+        clientId: GOOGLE_WEB_CLIENT_ID || GOOGLE_EXPO_CLIENT_ID,
+        redirectUri,
+        responseType: ResponseType.Token,
+        usePKCE: false,
+      } as const)
+    : ({
+        iosClientId: GOOGLE_IOS_CLIENT_ID,
+        androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        redirectUri,
+      } as const);
+  const [request, response, promptAsync] = Google.useAuthRequest(googleConfig);
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.log("Google OAuth redirect URI:", redirectUri);
+      console.log("Google OAuth auth URL:", request?.url);
+    }
+  }, [redirectUri, request?.url]);
 
   useEffect(() => {
     if (params.mode === "login") setMode("login");
@@ -40,6 +102,19 @@ export default function LoginScreen() {
       setMode("signup");
     }
   }, [params.mode, logout]);
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const accessToken = response.authentication?.accessToken;
+      if (!accessToken) {
+        Alert.alert("Google login failed", "Google did not return an access token.");
+        return;
+      }
+      void completeGoogleLogin(accessToken);
+    } else if (response?.type === "error") {
+      Alert.alert("Google login failed", response.error?.message ?? "Google sign-in was cancelled.");
+    }
+  }, [applyAuthUser, response, router]);
 
   async function handleSubmit() {
     const trimmedEmail = email.trim().toLowerCase();
@@ -81,9 +156,62 @@ export default function LoginScreen() {
     }
   }
 
-  function continueWithGoogle() {
-    // Placeholder — Google OAuth not yet wired
-    Alert.alert("Coming soon", "Google authentication will be available in a future update.");
+  async function completeGoogleLogin(accessToken: string) {
+    setGoogleLoading(true);
+    try {
+      const result = await authGoogle(accessToken);
+      await AsyncStorage.setItem(TOKEN_KEY, result.token);
+      applyAuthUser(result.user);
+
+      if (result.user.onboardingComplete) {
+        const nextRole =
+          result.user.role === "provider" || result.user.role === "parent" ? result.user.role : "patient";
+        router.replace(getHomeRouteForRole(nextRole) as never);
+      } else {
+        router.replace("/(auth)/onboarding");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Google sign-in could not be completed.";
+      Alert.alert("Google login failed", message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
+  async function continueWithGoogle() {
+    if (!request) return;
+    if (!isExpoGo) {
+      void promptAsync();
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      if (!request.url) {
+        Alert.alert("Google login failed", "Google sign-in is still loading. Please try again.");
+        return;
+      }
+
+      const returnUrl = getDefaultReturnUrl();
+      const startUrl = `${getExpoProxyRedirectUri()}/start?${new URLSearchParams({
+        authUrl: request.url,
+        returnUrl,
+      }).toString()}`;
+      const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
+
+      if (result.type !== "success") return;
+      const accessToken = getTokenFromAuthUrl(result.url);
+      if (!accessToken) {
+        Alert.alert("Google login failed", "Google did not return an access token.");
+        return;
+      }
+      await completeGoogleLogin(accessToken);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Google sign-in could not be completed.";
+      Alert.alert("Google login failed", message);
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (
@@ -226,11 +354,12 @@ export default function LoginScreen() {
           <SecondaryButton
             onPress={continueWithGoogle}
             icon="google"
-            label={isSignup ? "Sign up with Google" : "Login with Google"}
+            label={googleLoading ? "Connecting Google…" : isSignup ? "Sign up with Google" : "Login with Google"}
+            disabled={!request || loading || googleLoading}
           />
         </View>
 
-        {loading && (
+        {(loading || googleLoading) && (
           <View style={{ alignItems: "center", marginTop: 16 }}>
             <ActivityIndicator size="small" color={theme.accent} />
           </View>

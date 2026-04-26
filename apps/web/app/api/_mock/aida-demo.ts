@@ -119,8 +119,11 @@ export function verifyInsuranceResponse(providerId = demoProviders[0].id): Insur
   };
 }
 
-export function callSessionResponse(providerId = demoProviders[0].id): CallSessionResponse {
+export function callSessionResponse(providerId = demoProviders[0].id, patientName = 'the patient'): CallSessionResponse {
   const provider = demoProviders.find((item) => item.id === providerId) ?? demoProviders[0];
+  const transcript = demoData.providerIntake.callTranscript.map((line) =>
+    line.replace(/Elena Morales/g, patientName),
+  );
 
   return {
     callSessionId: `call-${provider.id}-demo`,
@@ -129,7 +132,7 @@ export function callSessionResponse(providerId = demoProviders[0].id): CallSessi
     clinicName: provider.name,
     status: 'confirmed',
     stages: demoData.providerIntake.callStages,
-    transcript: demoData.providerIntake.callTranscript,
+    transcript,
     appointment: {
       providerId: provider.id,
       doctor: provider.doctor,

@@ -3,11 +3,15 @@ import { Pressable, Text, View } from "react-native";
 import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
-const slots = demoData.providerIntake.scheduleSlots;
-const visits = demoData.appointmentHistory;
-
 export default function ScheduleManagementScreen() {
-  const { theme } = useAidaTheme();
+  const { theme, patientProfile } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
+  const slots = demoData.providerIntake.scheduleSlots.map((slot, index) =>
+    index === 0 ? { ...slot, patient: patientName } : slot,
+  );
+  const visits = demoData.appointmentHistory.map((visit, index) =>
+    index === 0 ? { ...visit, patientName } : visit,
+  );
   const [view, setView] = useState<"schedule" | "history">("schedule");
 
   return (

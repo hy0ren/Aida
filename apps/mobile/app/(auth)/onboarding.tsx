@@ -86,6 +86,7 @@ export default function OnboardingScreen() {
           });
         }
         await uploadPatientIntake({
+          patientId: userId,
           insuranceComplete,
           healthComplete: healthData,
           healthSource: "Apple Health",

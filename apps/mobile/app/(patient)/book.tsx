@@ -20,13 +20,13 @@ export default function BookScreen() {
   const [insuranceState, setInsuranceState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [insurance, setInsurance] = useState<InsuranceVerificationResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const { theme } = useAidaTheme();
+  const { theme, userId, language } = useAidaTheme();
   const selectedProvider = providers[selected];
 
   useEffect(() => {
     let mounted = true;
 
-    findProviders({ summaryId: demoData.healthSummary.id, patientId: demoData.patient.id })
+    findProviders({ summaryId: demoData.healthSummary.id, patientId: userId ?? demoData.patient.id, language })
       .then((response) => {
         if (!mounted) return;
         setProviders(response.providers);
@@ -46,7 +46,7 @@ export default function BookScreen() {
             phone: provider.phone,
             nextAvailable: provider.nextAvailable,
             networkStatus: provider.network === "In-network" ? "in-network" : "review-plan",
-            languages: ["English", demoData.patient.preferredLanguage.label],
+            languages: ["English", language],
           })),
         );
         setProviderState("error");
@@ -56,7 +56,7 @@ export default function BookScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [language, userId]);
 
   useEffect(() => {
     if (!selectedProvider) return;
@@ -64,7 +64,7 @@ export default function BookScreen() {
     let mounted = true;
     setInsuranceState("loading");
 
-    verifyInsurance({ providerId: selectedProvider.id, patientId: demoData.patient.id })
+    verifyInsurance({ providerId: selectedProvider.id, patientId: userId ?? demoData.patient.id })
       .then((response) => {
         if (!mounted) return;
         setInsurance(response);
@@ -79,7 +79,7 @@ export default function BookScreen() {
     return () => {
       mounted = false;
     };
-  }, [selectedProvider]);
+  }, [selectedProvider, userId]);
 
   return (
     <Screen

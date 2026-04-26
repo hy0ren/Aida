@@ -16,6 +16,7 @@ export interface UserDocument {
   passwordHash?: string;
   authProvider: "password" | "google" | "worldcoin" | "apple";
   externalAuthId?: string;
+  avatarUrl?: string;
   name?: string;
   firstName?: string;
   lastName?: string;
@@ -50,6 +51,7 @@ export interface AuthUser {
   email: string;
   emailNormalized?: string;
   name?: string;
+  avatarUrl?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
@@ -137,6 +139,7 @@ function serializeUser(user: UserDocument & { _id?: unknown }): AuthUser {
     email: user.email,
     emailNormalized: user.emailNormalized ?? normalizeEmail(user.email),
     name: joinName(firstName, lastName, user.name),
+    avatarUrl: user.avatarUrl,
     firstName,
     lastName,
     phone: user.phone,
@@ -380,6 +383,168 @@ export async function login(email: string, password: string): Promise<AuthResult
     ok: true,
     token,
     user: serializeUser({ ...user, ...normalizedUser }),
+  };
+}
+
+export type GoogleProfile = {
+  sub: string;
+  email: string;
+  email_verified?: boolean;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  picture?: string;
+};
+
+export async function loginWithGoogle(accessToken: string): Promise<AuthResult> {
+  if (!accessToken) {
+    return { ok: false, error: "Google access token is required." };
+  }
+
+  const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!profileResponse.ok) {
+    return { ok: false, error: "Google authentication failed." };
+  }
+
+  const profile = await profileResponse.json() as GoogleProfile;
+  if (!profile.email || !profile.sub) {
+    return { ok: false, error: "Google profile did not include an email." };
+  }
+
+  const emailNormalized = normalizeEmail(profile.email);
+  const splitName = splitFullName(profile.name);
+  const firstName = profile.given_name ?? splitName.firstName;
+  const lastName = profile.family_name ?? splitName.lastName;
+  const fullName = joinName(firstName, lastName, profile.name) ?? emailNormalized;
+  const now = new Date();
+
+  const col = await getUsersCollection();
+  if (!col) {
+    return {
+      ok: true,
+      token: signToken("demo-google-user-id", emailNormalized),
+      user: {
+        id: "demo-google-user-id",
+        email: emailNormalized,
+        emailNormalized,
+        name: fullName,
+        firstName,
+        lastName,
+        avatarUrl: profile.picture,
+        role: "patient",
+        onboardingComplete: false,
+        accountStatus: "active",
+        language: "English",
+        emailVerified: Boolean(profile.email_verified),
+        phoneVerified: false,
+        notificationsEnabled: true,
+        pushNotificationsEnabled: true,
+        emailNotificationsEnabled: true,
+        calendarSyncEnabled: false,
+      },
+    };
+  }
+
+  const existing = await col.findOne({
+    $or: [
+      { externalAuthId: profile.sub, authProvider: "google" },
+      { emailNormalized },
+      { email: emailNormalized },
+    ],
+    accountStatus: { $ne: "deleted" },
+  });
+
+  if (existing?.accountStatus === "disabled") {
+    return { ok: false, error: "This account is disabled." };
+  }
+
+  if (existing) {
+    const updateData: Partial<UserDocument> = {
+      emailNormalized,
+      authProvider: existing.authProvider ?? "google",
+      externalAuthId: profile.sub,
+      name: existing.name ?? fullName,
+      firstName: existing.firstName ?? firstName,
+      lastName: existing.lastName ?? lastName,
+      avatarUrl: profile.picture ?? existing.avatarUrl,
+      emailVerified: existing.emailVerified || Boolean(profile.email_verified),
+      failedLoginCount: 0,
+      notificationsEnabled: existing.notificationsEnabled ?? true,
+      pushNotificationsEnabled: existing.pushNotificationsEnabled ?? true,
+      emailNotificationsEnabled: existing.emailNotificationsEnabled ?? true,
+      calendarSyncEnabled: existing.calendarSyncEnabled ?? false,
+      lastLoginAt: now,
+      updatedAt: now,
+    };
+    await col.updateOne({ _id: existing._id }, { $set: updateData });
+    const updated = await col.findOne({ _id: existing._id });
+    if (!updated) return { ok: false, error: "Google user not found after update." };
+    const token = signToken(String(updated._id), updated.email);
+    return { ok: true, token, user: serializeUser(updated) };
+  }
+
+  const result = await col.insertOne({
+    email: emailNormalized,
+    emailNormalized,
+    authProvider: "google",
+    externalAuthId: profile.sub,
+    name: fullName,
+    firstName,
+    lastName,
+    avatarUrl: profile.picture,
+    phone: undefined,
+    role: "patient",
+    language: "English",
+    timezone: undefined,
+    onboardingComplete: false,
+    accountStatus: "active",
+    emailVerified: Boolean(profile.email_verified),
+    phoneVerified: false,
+    failedLoginCount: 0,
+    notificationsEnabled: true,
+    pushNotificationsEnabled: true,
+    emailNotificationsEnabled: true,
+    calendarSyncEnabled: false,
+    themeMode: "light",
+    colorPalette: "red",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const userId = result.insertedId.toString();
+  const token = signToken(userId, emailNormalized);
+
+  return {
+    ok: true,
+    token,
+    user: {
+      id: userId,
+      email: emailNormalized,
+      emailNormalized,
+      name: fullName,
+      firstName,
+      lastName,
+      avatarUrl: profile.picture,
+      role: "patient",
+      onboardingComplete: false,
+      accountStatus: "active",
+      language: "English",
+      emailVerified: Boolean(profile.email_verified),
+      phoneVerified: false,
+      notificationsEnabled: true,
+      pushNotificationsEnabled: true,
+      emailNotificationsEnabled: true,
+      calendarSyncEnabled: false,
+      themeMode: "light",
+      colorPalette: "red",
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    },
   };
 }
 

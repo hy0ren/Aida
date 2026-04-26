@@ -15,7 +15,8 @@ import {
 } from "../../components/aida";
 
 export default function ConfirmationScreen() {
-  const { theme, expoPushToken, language } = useAidaTheme();
+  const { theme, expoPushToken, language, userId, patientProfile } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [appointment, setAppointment] = useState<AppointmentResponse | null>(null);
@@ -25,13 +26,17 @@ export default function ConfirmationScreen() {
   useEffect(() => {
     let mounted = true;
 
-    createAppointment({ providerId: demoData.providers[0].id })
+    createAppointment({ providerId: demoData.providers[0].id, patientId: userId ?? demoData.patient.id })
       .then(async (appointmentResponse) => {
         const confirmationResponse = await sendAppointmentConfirmation({
           appointmentId: appointmentResponse.appointmentId,
           patientId: appointmentResponse.patientId,
+          patientName,
           expoPushToken,
           language,
+          doctor: appointmentResponse.doctor,
+          clinicName: appointmentResponse.clinicName,
+          scheduledAt: appointmentResponse.scheduledAt,
         });
 
         // Remote Expo push cannot be delivered in Expo Go (SDK 53+) or on
@@ -63,7 +68,7 @@ export default function ConfirmationScreen() {
     return () => {
       mounted = false;
     };
-  }, [expoPushToken, language]);
+  }, [expoPushToken, language, patientName, userId]);
 
   return (
     <Screen title="You're booked" subtitle="A confirmation receipt was sent to Aida and your phone.">

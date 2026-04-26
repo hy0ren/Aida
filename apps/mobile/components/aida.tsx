@@ -114,6 +114,7 @@ type ThemeState = {
   isLoggedIn: boolean;
   userId?: string;
   email?: string;
+  avatarUrl?: string;
   onboardingComplete: boolean;
   role: AidaRole;
   patientProfile: PatientProfile;
@@ -161,6 +162,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState<string | undefined>();
   const [email, setEmail] = useState<string | undefined>();
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [role, setRole] = useState<AidaRole>("patient");
   const [patientProfile, setPatientProfile] = useState<PatientProfile>(defaultPatientProfile);
@@ -183,6 +185,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
           isLoggedIn: boolean;
           userId: string;
           email: string;
+          avatarUrl: string;
           onboardingComplete: boolean;
           role: AidaRole;
           patientProfile: Partial<PatientProfile>;
@@ -201,6 +204,9 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
         }
         if (typeof saved.email === "string") {
           setEmail(saved.email);
+        }
+        if (typeof saved.avatarUrl === "string") {
+          setAvatarUrl(saved.avatarUrl);
         }
         setOnboardingComplete(Boolean(saved.onboardingComplete));
         if (saved.role === "patient" || saved.role === "parent" || saved.role === "provider") {
@@ -252,6 +258,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       userId,
       email,
+      avatarUrl,
       onboardingComplete,
       role,
       patientProfile,
@@ -270,6 +277,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   }, [
     calendarSync,
     email,
+    avatarUrl,
     expoPushToken,
     isLoggedIn,
     isReady,
@@ -365,6 +373,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
   const applyAuthUser = useCallback((user: AuthUser) => {
     setUserId(user.id);
     setEmail(user.email);
+    setAvatarUrl(user.avatarUrl);
     setIsLoggedIn(true);
     setOnboardingComplete(Boolean(user.onboardingComplete));
     if (user.role === "patient" || user.role === "parent" || user.role === "provider") {
@@ -449,6 +458,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(false);
     setUserId(undefined);
     setEmail(undefined);
+    setAvatarUrl(undefined);
     setOnboardingComplete(false);
     setRole("patient");
     setPatientProfile(defaultPatientProfile);
@@ -518,6 +528,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       userId,
       email,
+      avatarUrl,
       onboardingComplete,
       role,
       patientProfile,
@@ -547,6 +558,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       calendarSync,
       completeOnboarding,
       email,
+      avatarUrl,
       expoPushToken,
       isLoggedIn,
       isReady,

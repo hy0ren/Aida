@@ -15,22 +15,32 @@ import {
 } from "../../components/aida";
 
 export default function SummaryScreen() {
-  const [summary, setSummary] = useState(sampleSummary);
+  const { theme, language, userId, patientProfile } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
+  const personalizedSampleSummary = sampleSummary
+    .replace(/Elena Morales/g, patientName)
+    .replace(/Elena/g, patientProfile.firstName)
+    .replace(/Spanish/g, language);
+  const [summary, setSummary] = useState(personalizedSampleSummary);
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
   const [statusMessage, setStatusMessage] = useState("Gemini is summarizing on-device cleaned biometrics in your language.");
   const [shareItems, setShareItems] = useState([
     "Approved summary",
     "Insurance details",
-    `Preferred language: ${demoData.patient.preferredLanguage.label}`,
+    `Preferred language: ${language}`,
     demoData.selectedAppointment.reason,
   ]);
-  const { theme, language } = useAidaTheme();
   const flaggedMetrics = demoData.biometricMetrics.filter((metric) => metric.status === "attention");
 
   useEffect(() => {
     let mounted = true;
 
-    summarizeUpload({ uploadId: "upload-elena-2026-04-25", patientId: demoData.patient.id, language })
+    summarizeUpload({
+      uploadId: "upload-current",
+      patientId: userId ?? demoData.patient.id,
+      patientName,
+      language,
+    })
       .then((response) => {
         if (!mounted) return;
         setSummary(response.summary);
@@ -47,7 +57,7 @@ export default function SummaryScreen() {
     return () => {
       mounted = false;
     };
-  }, [language]);
+  }, [language, patientName, userId]);
 
   return (
     <Screen
@@ -110,7 +120,7 @@ export default function SummaryScreen() {
             {shareItems.map((item, index) => (
               <Pill
                 key={item}
-                label={item.replace(demoData.patient.preferredLanguage.label, language)}
+                label={item.replace(/Spanish/g, language)}
                 icon={index === 0 ? "check" : index === 1 ? "card-account-details" : index === 2 ? "translate" : "stethoscope"}
                 tone={index === 1 ? colors.plum : index === 2 ? colors.amber : index === 3 ? colors.green : undefined}
               />

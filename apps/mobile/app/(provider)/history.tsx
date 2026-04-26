@@ -1,11 +1,18 @@
+import { useMemo } from "react";
 import { Text, View } from "react-native";
 import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
-const visits = demoData.appointmentHistory;
-
 export default function ProviderHistoryScreen() {
-  const { theme } = useAidaTheme();
+  const { theme, patientProfile } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
+  const visits = useMemo(
+    () =>
+      demoData.appointmentHistory.map((visit, index) =>
+        index === 0 ? { ...visit, patientName } : visit,
+      ),
+    [patientName],
+  );
   return (
     <Screen title="History" subtitle="Recent provider-side appointment activity.">
       <View style={{ gap: 14, paddingBottom: 86 }}>

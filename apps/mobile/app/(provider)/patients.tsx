@@ -3,12 +3,28 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme, PrimaryButton } from "../../components/aida";
 
-const patients = demoData.providerIntake.patientRoster;
-
 const filters = ["All", "Needs review", "Confirmed", "Flagged"];
 
 export default function ProviderPatientsScreen() {
-  const { theme } = useAidaTheme();
+  const { theme, patientProfile, language } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
+  const personalizedSummary = sampleSummary
+    .replace(/Elena Morales/g, patientName)
+    .replace(/Elena/g, patientProfile.firstName)
+    .replace(/Spanish/g, language);
+  const patients = useMemo(
+    () =>
+      demoData.providerIntake.patientRoster.map((patient, index) =>
+        index === 0
+          ? {
+              ...patient,
+              name: patientName,
+              language,
+            }
+          : patient,
+      ),
+    [language, patientName],
+  );
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [selected, setSelected] = useState(patients[0]);
@@ -139,7 +155,7 @@ export default function ProviderPatientsScreen() {
           <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900", marginTop: 18 }}>
             Approved summary
           </Text>
-          <Text style={{ color: theme.muted, lineHeight: 22, marginTop: 8 }}>{sampleSummary}</Text>
+          <Text style={{ color: theme.muted, lineHeight: 22, marginTop: 8 }}>{personalizedSummary}</Text>
         </Card>
 
         <Card>

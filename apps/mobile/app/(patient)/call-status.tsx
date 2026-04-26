@@ -9,7 +9,8 @@ import { Icon, PrimaryButton, useAidaTheme } from "../../components/aida";
 export default function CallStatusScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ providerId?: string }>();
-  const { language, theme } = useAidaTheme();
+  const { language, theme, userId, patientProfile } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const [stage, setStage] = useState(0);
   const [lineCount, setLineCount] = useState(1);
   const [callState, setCallState] = useState<"loading" | "success" | "error">("loading");
@@ -24,7 +25,9 @@ export default function CallStatusScreen() {
 
     initiateCall({
       providerId: params.providerId ?? demoData.providers[0].id,
-      patientId: demoData.patient.id,
+      patientId: userId ?? demoData.patient.id,
+      patientName,
+      language,
       summaryId: demoData.healthSummary.id,
     })
       .then((response) => {
@@ -43,7 +46,7 @@ export default function CallStatusScreen() {
     return () => {
       mounted = false;
     };
-  }, [params.providerId]);
+  }, [language, params.providerId, patientName, userId]);
 
   useEffect(() => {
     if (callState === "loading") return;
@@ -158,7 +161,9 @@ export default function CallStatusScreen() {
               setLineCount(1);
               initiateCall({
                 providerId: params.providerId ?? demoData.providers[0].id,
-                patientId: demoData.patient.id,
+                patientId: userId ?? demoData.patient.id,
+                patientName,
+                language,
                 summaryId: demoData.healthSummary.id,
               })
                 .then((response) => {

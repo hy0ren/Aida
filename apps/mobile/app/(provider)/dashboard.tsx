@@ -3,7 +3,8 @@ import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, PrimaryButton, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function ProviderDashboardScreen() {
-  const { theme, language } = useAidaTheme();
+  const { theme, language, patientProfile } = useAidaTheme();
+  const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   return (
     <Screen title="Today" subtitle={`${demoData.providers[0].name} appointment queue.`}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
@@ -23,7 +24,7 @@ export default function ProviderDashboardScreen() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                {demoData.patient.name}
+                {patientName}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 4 }}>
                 {demoData.selectedAppointment.timeLabel} - {demoData.selectedAppointment.visitType}
