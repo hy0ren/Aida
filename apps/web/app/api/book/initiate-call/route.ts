@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { callSessionResponse } from '../../_mock/aida-demo';
 
 const ELEVENLABS_OUTBOUND_CALL_URL = "https://api.elevenlabs.io/v1/convai/twilio/outbound-call";
-const DEFAULT_TO_NUMBER = "+17143921298";
 const E164_PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
 type InitiateCallBody = {
@@ -20,7 +19,7 @@ type ElevenLabsOutboundCallResponse = {
 };
 
 function resolveToNumber(body: InitiateCallBody) {
-  return body.toNumber?.trim() || process.env.ELEVENLABS_DEFAULT_TO_NUMBER || DEFAULT_TO_NUMBER;
+  return body.toNumber?.trim() || process.env.ELEVENLABS_DEFAULT_TO_NUMBER?.trim() || "";
 }
 
 export async function POST(req: Request) {
@@ -37,7 +36,7 @@ export async function POST(req: Request) {
 
     if (!E164_PHONE_RE.test(toNumber)) {
       return NextResponse.json(
-        { ok: false, error: "ElevenLabs toNumber must be in E.164 format, for example +17143921298." },
+        { ok: false, error: "Set ELEVENLABS_DEFAULT_TO_NUMBER in apps/web/.env.local using E.164 format, for example +17143921298." },
         { status: 400 },
       );
     }
@@ -108,7 +107,7 @@ export async function POST(req: Request) {
       ok: true,
       data: {
         ...callSessionResponse(),
-        toNumber: DEFAULT_TO_NUMBER,
+        toNumber: process.env.ELEVENLABS_DEFAULT_TO_NUMBER,
         liveCall: false,
         warning: "Live call initiation failed; returned demo call session.",
       },
