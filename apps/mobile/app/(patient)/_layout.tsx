@@ -14,7 +14,7 @@ function tabIcon(name: TabIcon) {
 const hiddenTabOptions = { href: null };
 
 export default function PatientLayout() {
-  const { isReady, isLoggedIn, onboardingComplete, role, theme, mode } = useAidaTheme();
+  const { isReady, isLoggedIn, onboardingComplete, role, theme, mode, t } = useAidaTheme();
 
   if (!isReady) return null;
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
@@ -49,28 +49,28 @@ export default function PatientLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: t("home"),
           tabBarIcon: tabIcon("view-dashboard-outline"),
         }}
       />
       <Tabs.Screen
         name="book"
         options={{
-          title: "Schedule",
+          title: t("schedule"),
           tabBarIcon: tabIcon("calendar-clock"),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: t("history"),
           tabBarIcon: tabIcon("clipboard-text-clock-outline"),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("profile"),
           tabBarIcon: tabIcon("account-circle-outline"),
         }}
       />

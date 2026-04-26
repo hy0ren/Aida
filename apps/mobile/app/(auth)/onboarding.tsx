@@ -43,6 +43,7 @@ export default function OnboardingScreen() {
     completeOnboarding,
     logout,
     theme,
+    t,
   } = useAidaTheme();
   const [role, setRole] = useState<AidaRole>(savedRole);
   const [firstName, setFirstName] = useState(patientProfile.firstName);
@@ -90,15 +91,15 @@ export default function OnboardingScreen() {
           insuranceComplete,
           healthComplete: healthData,
           healthSource: "Apple Health",
-          notes: "Uploaded during onboarding",
+          notes: t("uploadedDuringOnboarding"),
           files,
         });
       } catch (err) {
         console.warn("Upload failed during onboarding:", err);
         Alert.alert(
-          "Upload notice",
-          "Insurance cards couldn't be uploaded now. You can add them later from the Upload screen.",
-          [{ text: "Continue" }]
+          t("uploadNotice"),
+          t("insuranceUploadLater"),
+          [{ text: t("continue") }]
         );
       }
     }
@@ -141,8 +142,8 @@ export default function OnboardingScreen() {
         },
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Aida could not save your onboarding profile.";
-      Alert.alert("Profile save failed", message);
+      const message = err instanceof Error ? err.message : t("onboardingSaveFailed");
+      Alert.alert(t("profileSaveFailed"), message);
       setIsUploading(false);
       return;
     }
@@ -168,13 +169,13 @@ export default function OnboardingScreen() {
 
   return (
     <Screen
-      title="Set up Aida"
-      subtitle="Choose your role first, then personalize the dashboard Aida opens for you."
+      title={t("setupAida")}
+      subtitle={t("setupAidaSubtitle")}
       action={<StepDots count={3} active={2} />}
     >
       <View style={{ gap: 16 }}>
         <Card>
-          <Text style={[sectionTitle, { color: theme.ink }]}>1. Preferred language</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>1. {t("preferredLanguage")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
             {languages.map((item) => (
               <Pressable key={item} onPress={() => setLanguage(item)}>
@@ -209,22 +210,22 @@ export default function OnboardingScreen() {
         </Card>
 
         <Card>
-          <Text style={[sectionTitle, { color: theme.ink }]}>2. Select your role</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>2. {t("selectRole")}</Text>
           <View style={{ gap: 10 }}>
             {[
               {
                 id: "patient",
-                title: "I am the patient",
+                title: t("iAmPatient"),
                 icon: "account-heart",
               },
               {
                 id: "parent",
-                title: "I manage care for my child",
+                title: t("manageChildCare"),
                 icon: "human-male-child",
               },
               {
                 id: "provider",
-                title: "I am a provider",
+                title: t("iAmProvider"),
                 icon: "stethoscope",
               },
             ].map((item) => (
@@ -258,27 +259,27 @@ export default function OnboardingScreen() {
 
         {!isProvider && (
           <Card>
-            <Text style={[sectionTitle, { color: theme.ink }]}>3. Insurance card</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>3. {t("insuranceCard")}</Text>
             <Text style={{ color: theme.muted, lineHeight: 20, marginBottom: 14 }}>
               Snap photos of both sides. Aida will OCR the details for your first visit.
             </Text>
             <View style={{ gap: 10 }}>
               <GlassScanner
-                label="Front of card"
-                detail="Name, plan, member ID"
+                label={t("frontOfCard")}
+                detail={t("frontOfCardDetail")}
                 value={frontCard}
                 onChange={setFrontCard}
               />
               <GlassScanner
-                label="Back of card"
-                detail="Claims phone and payer details"
+                label={t("backOfCard")}
+                detail={t("backOfCardDetail")}
                 value={backCard}
                 onChange={setBackCard}
               />
             </View>
             {insuranceComplete && (
               <View style={{ marginTop: 10, alignItems: "flex-start" }}>
-                <Pill label="Both sides captured" icon="check" />
+                <Pill label={t("bothSidesCaptured")} icon="check" />
               </View>
             )}
           </Card>
@@ -286,10 +287,10 @@ export default function OnboardingScreen() {
 
         {!isProvider && (
           <Card>
-            <Text style={[sectionTitle, { color: theme.ink }]}>4. Health data (optional)</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>4. {t("healthDataOptional")}</Text>
             <UploadChoice
-              title="Health data"
-              detail="Apple Health, Garmin, Whoop, Oura"
+              title={t("healthData")}
+              detail={t("wearableSources")}
               icon="heart-pulse"
               active={healthData}
               accent={theme.accent}
@@ -300,21 +301,21 @@ export default function OnboardingScreen() {
 
         {isProvider ? (
           <Card>
-            <Text style={[sectionTitle, { color: theme.ink }]}>Provider credentials</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>{t("providerCredentials")}</Text>
             <View style={{ gap: 10 }}>
-              <Field label="Clinic email" value={clinicEmail} onChangeText={setClinicEmail} />
-              <Field label="Clinic code" value={clinicCode} onChangeText={setClinicCode} />
+              <Field label={t("clinicEmail")} value={clinicEmail} onChangeText={setClinicEmail} />
+              <Field label={t("clinicCode")} value={clinicCode} onChangeText={setClinicCode} />
             </View>
           </Card>
         ) : (
           <Card>
-            <Text style={[sectionTitle, { color: theme.ink }]}>Profile</Text>
+            <Text style={[sectionTitle, { color: theme.ink }]}>{t("profile")}</Text>
             <View style={{ gap: 10 }}>
-              <Field label="First name" value={firstName} onChangeText={setFirstName} />
-              <Field label="Last name" value={lastName} onChangeText={setLastName} />
-              <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-              <Field label="Timezone" value={timezone} onChangeText={setTimezone} />
-              <Field label="Emergency contact" value={emergencyContact} onChangeText={setEmergencyContact} />
+              <Field label={t("firstName")} value={firstName} onChangeText={setFirstName} />
+              <Field label={t("lastName")} value={lastName} onChangeText={setLastName} />
+              <Field label={t("phone")} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              <Field label={t("timezone")} value={timezone} onChangeText={setTimezone} />
+              <Field label={t("emergencyContact")} value={emergencyContact} onChangeText={setEmergencyContact} />
             </View>
           </Card>
         )}
@@ -322,11 +323,11 @@ export default function OnboardingScreen() {
         <View style={{ gap: 10 }}>
           <PrimaryButton
             icon={isUploading ? "creation" : "arrow-right"}
-            label={isUploading ? "Setting up Aida…" : isProvider ? "Enter provider portal" : "Finish onboarding"}
+            label={isUploading ? t("settingUpAida") : isProvider ? t("enterProviderPortal") : t("finishOnboarding")}
             onPress={finishOnboarding}
             disabled={isUploading}
           />
-          <SecondaryButton onPress={returnToLogin} icon="arrow-left" label="Back to login" />
+          <SecondaryButton onPress={returnToLogin} icon="arrow-left" label={t("backToLogin")} />
         </View>
       </View>
     </Screen>
@@ -348,7 +349,7 @@ function UploadChoice({
   accent: string;
   onPress: () => void;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
   return (
     <Pressable onPress={onPress}>
       <View
@@ -370,7 +371,7 @@ function UploadChoice({
             {detail}
           </Text>
         </View>
-        {active ? <Pill label="Added" icon="check" /> : <Pill label="Optional" tone={colors.faint} />}
+        {active ? <Pill label={t("added")} icon="check" /> : <Pill label={t("optional")} tone={colors.faint} />}
       </View>
     </Pressable>
   );

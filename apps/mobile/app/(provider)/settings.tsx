@@ -41,10 +41,11 @@ export default function ProviderSettingsScreen() {
     updateProviderProfile,
     logout,
     theme,
+    t,
   } = useAidaTheme();
 
   return (
-    <Screen title="Settings" subtitle="Provider portal preferences and account controls.">
+    <Screen title={t("settings")} subtitle={t("providerSettingsSubtitle")}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -65,25 +66,25 @@ export default function ProviderSettingsScreen() {
                 {providerProfile.clinicName}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                Provider account
+                {t("providerAccount")}
               </Text>
             </View>
-            <Pill label="Credentialed" icon="check" />
+            <Pill label={t("credentialed")} icon="check" />
           </View>
         </Card>
 
         <Card>
-          <SectionTitle>Appearance</SectionTitle>
+          <SectionTitle>{t("appearance")}</SectionTitle>
           <PaletteSelector />
           <SettingToggle
-            title="Dark mode"
+            title={t("darkMode")}
             value={mode === "dark"}
             onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
           />
         </Card>
 
         <Card>
-          <SectionTitle>Preferred language</SectionTitle>
+          <SectionTitle>{t("preferredLanguage")}</SectionTitle>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
             {languageOptions.map((item) => (
               <Pressable key={item} onPress={() => setLanguage(item)}>
@@ -117,32 +118,32 @@ export default function ProviderSettingsScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Clinic profile</SectionTitle>
+          <SectionTitle>{t("clinicProfile")}</SectionTitle>
           <View style={{ gap: 12 }}>
             <Field
-              label="Clinic name"
+              label={t("clinicName")}
               value={providerProfile.clinicName}
               onChangeText={(clinicName) => updateProviderProfile({ clinicName })}
             />
             <Field
-              label="Provider email"
+              label={t("providerEmail")}
               value={providerProfile.clinicEmail}
               onChangeText={(clinicEmail) => updateProviderProfile({ clinicEmail })}
               keyboardType="email-address"
             />
             <Field
-              label="Clinic code"
+              label={t("clinicCode")}
               value={providerProfile.clinicCode}
               onChangeText={(clinicCode) => updateProviderProfile({ clinicCode })}
             />
             <Field
-              label="Phone"
+              label={t("phone")}
               value={providerProfile.phone}
               onChangeText={(phone) => updateProviderProfile({ phone })}
               keyboardType="phone-pad"
             />
             <Field
-              label="Timezone"
+              label={t("timezone")}
               value={providerProfile.timezone}
               onChangeText={(timezone) => updateProviderProfile({ timezone })}
             />
@@ -150,16 +151,16 @@ export default function ProviderSettingsScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Preferences</SectionTitle>
+          <SectionTitle>{t("preferences")}</SectionTitle>
           <SettingToggle
-            title="New booking alerts"
-            detail="Notify clinic staff when Aida books a patient"
+            title={t("newBookingAlerts")}
+            detail={t("newBookingAlertsDetail")}
             value={notifications}
             onValueChange={setNotifications}
           />
           <SettingToggle
-            title="Calendar sync"
-            detail="Mirror confirmed appointments to clinic calendar"
+            title={t("calendarSync")}
+            detail={t("providerCalendarSyncDetail")}
             value={calendarSync}
             onValueChange={setCalendarSync}
           />
@@ -171,7 +172,7 @@ export default function ProviderSettingsScreen() {
             router.replace("/(auth)/login?mode=login");
           }}
           icon="logout"
-          label="Log out"
+          label={t("logout")}
         />
       </View>
     </Screen>

@@ -72,7 +72,7 @@ export default function VerifyScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const [stage, setStage] = useState<"ready" | "scanning" | "done" | "error">("ready");
   const [errorMsg, setErrorMsg] = useState("");
-  const { login, role, theme } = useAidaTheme();
+  const { login, role, theme, t } = useAidaTheme();
 
   const navigateAfterVerify = useCallback(() => {
     setTimeout(() => {
@@ -108,18 +108,18 @@ export default function VerifyScreen() {
       navigateAfterVerify();
     } catch (err) {
       setStage("error");
-      setErrorMsg(err instanceof Error ? err.message : "Verification failed");
+      setErrorMsg(err instanceof Error ? err.message : t("verificationFailed"));
     }
   }
 
   const statusLabel =
     stage === "ready"
-      ? "Proof of personhood"
+      ? t("proofOfPersonhood")
       : stage === "scanning"
-        ? "Checking proof..."
+        ? t("checkingProof")
         : stage === "error"
-          ? "Verification failed"
-          : "Verified";
+          ? t("verificationFailed")
+          : t("verified");
 
   const isWorldIdConfigured = Boolean(WORLD_APP_ID);
 
@@ -145,7 +145,7 @@ export default function VerifyScreen() {
             letterSpacing: -0.3,
           }}
         >
-          Verify once. Book safely.
+          {t("verifyOnceBookSafely")}
         </Text>
         <Text
           style={{
@@ -155,8 +155,7 @@ export default function VerifyScreen() {
             marginTop: 12,
           }}
         >
-          World ID helps prevent duplicate or fraudulent appointment bookings
-          before a patient account is created.
+          {t("verifyIntro")}
         </Text>
       </View>
 
@@ -222,8 +221,8 @@ export default function VerifyScreen() {
           {stage === "error"
             ? errorMsg
             : isWorldIdConfigured
-              ? "No SSN required. World ID verifies you are a unique person."
-              : "No SSN required. World ID verification will activate when credentials are configured."}
+              ? t("noSsnRequired")
+              : t("noSsnConfigured")}
         </Text>
         <View style={{ marginTop: 22 }}>
           <StepDots
@@ -239,14 +238,13 @@ export default function VerifyScreen() {
           icon="earth"
           label={
             stage === "ready" || stage === "error"
-              ? "Begin verification"
-              : "Verifying"
+              ? t("beginVerification")
+              : t("verifying")
           }
           onPress={begin}
         />
         <Text style={{ color: theme.muted, textAlign: "center", lineHeight: 20 }}>
-          Verification protects appointment booking before you choose patient,
-          parent, or provider.
+          {t("verificationProtectsBooking")}
         </Text>
       </View>
     </View>

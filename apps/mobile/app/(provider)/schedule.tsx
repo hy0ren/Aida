@@ -4,7 +4,7 @@ import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function ScheduleManagementScreen() {
-  const { theme, patientProfile } = useAidaTheme();
+  const { theme, patientProfile, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const slots = demoData.providerIntake.scheduleSlots.map((slot, index) =>
     index === 0 ? { ...slot, patient: patientName } : slot,
@@ -15,7 +15,7 @@ export default function ScheduleManagementScreen() {
   const [view, setView] = useState<"schedule" | "history">("schedule");
 
   return (
-    <Screen title="Schedule" subtitle="Manage availability and review appointment history.">
+    <Screen title={t("schedule")} subtitle={t("scheduleManagementSubtitle")}>
       <View style={{ gap: 14, paddingBottom: 86 }}>
         <View
           style={{
@@ -46,7 +46,7 @@ export default function ScheduleManagementScreen() {
                   fontWeight: "900",
                 }}
               >
-                {item === "schedule" ? "Schedule" : "History"}
+                {item === "schedule" ? t("schedule") : t("history")}
               </Text>
             </Pressable>
           ))}
@@ -56,12 +56,12 @@ export default function ScheduleManagementScreen() {
           <>
             <Card>
               <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
-                Availability rules
+                {t("availabilityRules")}
               </Text>
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Pill label="English calls" icon="phone" />
+                <Pill label={t("englishCalls")} icon="phone" />
                 <Pill label={demoData.insurance.acceptedLabel} icon="shield-check" tone={colors.green} />
-                <Pill label="15 min buffer" icon="timer-outline" tone={colors.plum} />
+                <Pill label={t("minBuffer")} icon="timer-outline" tone={colors.plum} />
               </View>
             </Card>
 
@@ -77,7 +77,7 @@ export default function ScheduleManagementScreen() {
                       <Text style={{ color: theme.muted, marginTop: 3 }}>{slot.patient}</Text>
                     </View>
                     <Pill
-                      label={slot.status}
+                      label={slot.status === "Open" ? t("open") : slot.status === "Held" ? t("held") : slot.status}
                       tone={slot.status === "Open" ? colors.green : slot.status === "Held" ? colors.amber : theme.accent}
                     />
                   </View>

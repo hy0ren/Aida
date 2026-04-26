@@ -57,7 +57,7 @@ function getTokenFromAuthUrl(url: string) {
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const { theme, logout, login, applyAuthUser } = useAidaTheme();
+  const { theme, logout, login, applyAuthUser, t } = useAidaTheme();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const isSignup = mode === "signup";
 
@@ -107,23 +107,23 @@ export default function LoginScreen() {
     if (response?.type === "success") {
       const accessToken = response.authentication?.accessToken;
       if (!accessToken) {
-        Alert.alert("Google login failed", "Google did not return an access token.");
+        Alert.alert(t("googleLoginFailed"), t("googleNoToken"));
         return;
       }
       void completeGoogleLogin(accessToken);
     } else if (response?.type === "error") {
-      Alert.alert("Google login failed", response.error?.message ?? "Google sign-in was cancelled.");
+      Alert.alert(t("googleLoginFailed"), response.error?.message ?? t("googleCancelled"));
     }
-  }, [applyAuthUser, response, router]);
+  }, [applyAuthUser, response, router, t]);
 
   async function handleSubmit() {
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !password) {
-      Alert.alert("Missing fields", "Please enter your email and password.");
+      Alert.alert(t("missingFieldsTitle"), t("missingFieldsBody"));
       return;
     }
     if (isSignup && password.length < 6) {
-      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      Alert.alert(t("weakPasswordTitle"), t("weakPasswordBody"));
       return;
     }
 
@@ -149,8 +149,8 @@ export default function LoginScreen() {
         router.replace("/(auth)/onboarding");
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong.";
-      Alert.alert(isSignup ? "Sign up failed" : "Login failed", message);
+      const message = err instanceof Error ? err.message : t("somethingWentWrong");
+      Alert.alert(isSignup ? t("signUpFailed") : t("loginFailed"), message);
     } finally {
       setLoading(false);
     }
@@ -171,8 +171,8 @@ export default function LoginScreen() {
         router.replace("/(auth)/onboarding");
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Google sign-in could not be completed.";
-      Alert.alert("Google login failed", message);
+      const message = err instanceof Error ? err.message : t("googleCouldNotComplete");
+      Alert.alert(t("googleLoginFailed"), message);
     } finally {
       setGoogleLoading(false);
     }
@@ -188,7 +188,7 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     try {
       if (!request.url) {
-        Alert.alert("Google login failed", "Google sign-in is still loading. Please try again.");
+        Alert.alert(t("googleLoginFailed"), t("googleStillLoading"));
         return;
       }
 
@@ -202,13 +202,13 @@ export default function LoginScreen() {
       if (result.type !== "success") return;
       const accessToken = getTokenFromAuthUrl(result.url);
       if (!accessToken) {
-        Alert.alert("Google login failed", "Google did not return an access token.");
+        Alert.alert(t("googleLoginFailed"), t("googleNoToken"));
         return;
       }
       await completeGoogleLogin(accessToken);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Google sign-in could not be completed.";
-      Alert.alert("Google login failed", message);
+      const message = err instanceof Error ? err.message : t("googleCouldNotComplete");
+      Alert.alert(t("googleLoginFailed"), message);
     } finally {
       setGoogleLoading(false);
     }
@@ -262,7 +262,7 @@ export default function LoginScreen() {
             fontFamily: fonts.display,
           }}
         >
-          Healthcare, without borders
+          {t("heroTitle")}
         </Text>
         <Text
           style={{
@@ -273,7 +273,7 @@ export default function LoginScreen() {
             fontFamily: fonts.body,
           }}
         >
-          Let Aida bring you to the professionals you need.
+          {t("heroSubtitle")}
         </Text>
       </View>
 
@@ -311,7 +311,7 @@ export default function LoginScreen() {
                   fontWeight: "900",
                 }}
               >
-                {item === "login" ? "Login" : "Sign Up"}
+                {item === "login" ? t("login") : t("signUp")}
               </Text>
             </Pressable>
           ))}
@@ -319,7 +319,7 @@ export default function LoginScreen() {
 
         <View style={{ gap: 12 }}>
           <Field
-            label="Email"
+            label={t("email")}
             value={email}
             onChangeText={setEmail}
             placeholder="you@clinic.com"
@@ -332,7 +332,7 @@ export default function LoginScreen() {
             importantForAutofill="yes"
           />
           <Field
-            label="Password"
+            label={t("password")}
             value={password}
             onChangeText={setPassword}
             placeholder="••••••••"
@@ -348,13 +348,13 @@ export default function LoginScreen() {
           <PrimaryButton
             onPress={handleSubmit}
             icon={loading ? "creation" : isSignup ? "account-plus" : "login"}
-            label={loading ? (isSignup ? "Creating account…" : "Logging in…") : isSignup ? "Create account" : "Login"}
+            label={loading ? (isSignup ? t("creatingAccount") : t("loggingIn")) : isSignup ? t("createAccount") : t("login")}
             disabled={loading}
           />
           <SecondaryButton
             onPress={continueWithGoogle}
             icon="google"
-            label={googleLoading ? "Connecting Google…" : isSignup ? "Sign up with Google" : "Login with Google"}
+            label={googleLoading ? t("connectingGoogle") : isSignup ? t("signUpWithGoogle") : t("loginWithGoogle")}
             disabled={!request || loading || googleLoading}
           />
         </View>

@@ -42,10 +42,11 @@ export default function ProfileScreen() {
     role,
     logout,
     theme,
+    t,
   } = useAidaTheme();
 
   return (
-    <Screen title="Settings" subtitle="Personalize Aida for your care workflow.">
+    <Screen title={t("settings")} subtitle={t("patientSettingsSubtitle")}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -66,25 +67,25 @@ export default function ProfileScreen() {
                 {patientProfile.firstName} {patientProfile.lastName}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                {role === "parent" ? "Parent account" : "Patient account"}
+                {role === "parent" ? t("parentAccount") : t("patientAccount")}
               </Text>
             </View>
-            <Pill label="Verified" icon="check" />
+            <Pill label={t("verifiedBadge")} icon="check" />
           </View>
         </Card>
 
         <Card>
-          <SectionTitle>Appearance</SectionTitle>
+          <SectionTitle>{t("appearance")}</SectionTitle>
           <PaletteSelector />
           <SettingToggle
-            title="Dark mode"
+            title={t("darkMode")}
             value={mode === "dark"}
             onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
           />
         </Card>
 
         <Card>
-          <SectionTitle>Preferred language</SectionTitle>
+          <SectionTitle>{t("preferredLanguage")}</SectionTitle>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
             {languageOptions.map((item) => (
               <Pressable key={item} onPress={() => setLanguage(item)}>
@@ -130,31 +131,31 @@ export default function ProfileScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Profile details</SectionTitle>
+          <SectionTitle>{t("profileDetails")}</SectionTitle>
           <View style={{ gap: 12 }}>
             <Field
-              label="First name"
+              label={t("firstName")}
               value={patientProfile.firstName}
               onChangeText={(firstName) => updatePatientProfile({ firstName })}
             />
             <Field
-              label="Last name"
+              label={t("lastName")}
               value={patientProfile.lastName}
               onChangeText={(lastName) => updatePatientProfile({ lastName })}
             />
             <Field
-              label="Phone"
+              label={t("phone")}
               value={patientProfile.phone}
               onChangeText={(phone) => updatePatientProfile({ phone })}
               keyboardType="phone-pad"
             />
             <Field
-              label="Timezone"
+              label={t("timezone")}
               value={patientProfile.timezone}
               onChangeText={(timezone) => updatePatientProfile({ timezone })}
             />
             <Field
-              label="Emergency contact"
+              label={t("emergencyContact")}
               value={patientProfile.emergencyContact}
               onChangeText={(emergencyContact) => updatePatientProfile({ emergencyContact })}
             />
@@ -162,23 +163,23 @@ export default function ProfileScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Health data</SectionTitle>
-          <ProfileRow icon="sync" title="Sync Health Data" detail="Apple Health connected" />
-          <ProfileRow icon="dna" title="Genetic predisposition" detail="Not uploaded" />
-          <ProfileRow icon="camera-account" title="Identification photo" detail="Optional" />
+          <SectionTitle>{t("healthData")}</SectionTitle>
+          <ProfileRow icon="sync" title={t("syncHealthData")} detail={t("appleHealthConnected")} />
+          <ProfileRow icon="dna" title={t("geneticPredisposition")} detail={t("notUploaded")} />
+          <ProfileRow icon="camera-account" title={t("identificationPhoto")} detail={t("optional")} />
         </Card>
 
         <Card>
-          <SectionTitle>Preferences</SectionTitle>
+          <SectionTitle>{t("preferences")}</SectionTitle>
           <SettingToggle
-            title="Push confirmations"
-            detail="Appointment receipts and reminders"
+            title={t("pushConfirmations")}
+            detail={t("pushConfirmationsDetail")}
             value={notifications}
             onValueChange={setNotifications}
           />
           <SettingToggle
-            title="Calendar sync"
-            detail="Add confirmed appointments automatically"
+            title={t("calendarSync")}
+            detail={t("calendarSyncDetail")}
             value={calendarSync}
             onValueChange={setCalendarSync}
           />
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
             router.replace("/(auth)/login?mode=login");
           }}
           icon="logout"
-          label="Log out"
+          label={t("logout")}
         />
       </View>
     </Screen>

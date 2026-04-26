@@ -15,13 +15,13 @@ import {
 } from "../../components/aida";
 
 export default function ConfirmationScreen() {
-  const { theme, expoPushToken, language, userId, patientProfile } = useAidaTheme();
+  const { theme, expoPushToken, language, userId, patientProfile, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [appointment, setAppointment] = useState<AppointmentResponse | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationMessageResponse | null>(null);
-  const preparation = appointment?.preparation ?? ["Bring insurance card and photo ID"];
+  const preparation = appointment?.preparation ?? [t("bringInsuranceId")];
 
   useEffect(() => {
     let mounted = true;
@@ -62,7 +62,7 @@ export default function ConfirmationScreen() {
       .catch((error) => {
         if (!mounted) return;
         setState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Unable to load confirmation.");
+        setErrorMessage(error instanceof Error ? error.message : t("unableToLoadConfirmation"));
       });
 
     return () => {
@@ -71,7 +71,7 @@ export default function ConfirmationScreen() {
   }, [expoPushToken, language, patientName, userId]);
 
   return (
-    <Screen title="You're booked" subtitle="A confirmation receipt was sent to Aida and your phone.">
+    <Screen title={t("bookedTitle")} subtitle={t("bookedSubtitle")}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <View style={{ alignItems: "center", paddingVertical: 14 }}>
           <View
@@ -129,13 +129,13 @@ export default function ConfirmationScreen() {
         <Card style={{ backgroundColor: theme.surface }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={{ color: theme.muted, fontSize: 12, fontWeight: "900" }}>
-              CONFIRMATION RECEIPT
+              {t("confirmationReceipt")}
             </Text>
             {state === "loading" && <ActivityIndicator color={theme.accent} />}
-            {state === "error" && <Pill label="Error" icon="alert-circle-outline" tone={colors.red} />}
+            {state === "error" && <Pill label={t("error")} icon="alert-circle-outline" tone={colors.red} />}
             {state === "success" && (
               <Pill
-                label={confirmation?.channel === "expo-push" ? "Expo push" : "In-app"}
+                label={confirmation?.channel === "expo-push" ? t("expoPush") : t("inApp")}
                 icon="bell-check"
                 tone={colors.green}
               />
@@ -158,15 +158,15 @@ export default function ConfirmationScreen() {
             </Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-            <Pill label={confirmation?.status ?? "queued"} icon="check-circle" tone={colors.green} />
+            <Pill label={confirmation?.status ?? t("queued")} icon="check-circle" tone={colors.green} />
             <Pill label={confirmation?.to ?? demoData.confirmationReceipt.toMasked} icon="cellphone-message" />
             <Pill label={language} icon="translate" tone={colors.plum} />
           </View>
         </Card>
 
         <View style={{ gap: 10 }}>
-          <PrimaryButton href="/(patient)/home" icon="calendar-plus" label="Add to calendar" />
-          <SecondaryButton href="/(patient)/home" icon="home" label="Done" />
+          <PrimaryButton href="/(patient)/home" icon="calendar-plus" label={t("addToCalendar")} />
+          <SecondaryButton href="/(patient)/home" icon="home" label={t("done")} />
         </View>
       </View>
     </Screen>

@@ -48,7 +48,7 @@ const todaysMetrics: {
 }));
 
 export default function HomeScreen() {
-  const { theme, mode, language, userId, patientProfile } = useAidaTheme();
+  const { theme, mode, language, userId, patientProfile, t } = useAidaTheme();
   const patientId = userId ?? demoData.patient.id;
 
   const [nextAppt, setNextAppt] = useState<AppointmentResponse | null>(null);
@@ -96,8 +96,8 @@ export default function HomeScreen() {
 
   return (
     <Screen
-      title="Biometrics"
-      subtitle={`Good morning, ${patientProfile.firstName}. Your recent data is ready for review.`}
+      title={t("biometrics")}
+      subtitle={t("morningSubtitle", { name: patientProfile.firstName })}
       action={<Pill label={language} icon="translate" tone={colors.plum} />}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
@@ -105,7 +105,7 @@ export default function HomeScreen() {
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#b7cbc5", fontSize: 13, fontWeight: "800" }}>
-                Health status
+                {t("healthStatus")}
               </Text>
               {loading ? (
                 <ActivityIndicator color="#d7fff3" style={{ marginTop: 14 }} />
@@ -131,14 +131,14 @@ export default function HomeScreen() {
             <Icon name="heart-pulse" size={44} color="#d7fff3" />
           </View>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-            <Pill label={`Last sync: ${syncLabel}`} icon="sync" tone="#d7fff3" />
-            <Pill label="On-device" icon="shield-check" tone="#d7fff3" />
+            <Pill label={t("lastSync", { value: syncLabel })} icon="sync" tone="#d7fff3" />
+            <Pill label={t("onDevice")} icon="shield-check" tone="#d7fff3" />
           </View>
         </Card>
 
         <View style={{ flexDirection: "row", gap: 10 }}>
-          <PrimaryButton href="/(patient)/upload" icon="cloud-upload" label="Upload data" />
-          <SecondaryButton href="/(patient)/book" icon="calendar-plus" label="Book" />
+          <PrimaryButton href="/(patient)/upload" icon="cloud-upload" label={t("uploadData")} />
+          <SecondaryButton href="/(patient)/book" icon="calendar-plus" label={t("book")} />
         </View>
 
         <Card>
@@ -157,7 +157,7 @@ export default function HomeScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[sectionTitle, { color: theme.ink, marginBottom: 4 }]}>
-                Next appointment
+                {t("nextAppointment")}
               </Text>
               <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>
                 {apptDoctor}
@@ -172,14 +172,14 @@ export default function HomeScreen() {
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={[sectionTitle, { color: theme.ink, marginBottom: 4 }]}>
-                Today's metrics
+                {t("todaysMetrics")}
               </Text>
               <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-                Most recent readings from your wearable and phone.
+                {t("recentReadings")}
               </Text>
             </View>
             <Pill
-              label={`${todaysMetrics.length} updated`}
+              label={t("updatedCount", { count: todaysMetrics.length })}
               icon="sync"
               tone={mode === "dark" ? "#d7fff3" : colors.green}
             />
@@ -205,7 +205,7 @@ function TodayMetricCard({
   tone,
   wide,
 }: (typeof todaysMetrics)[number]) {
-  const { theme, mode } = useAidaTheme();
+  const { theme, mode, t } = useAidaTheme();
   const isFlagged = tone === "attention";
   const accent = isFlagged ? colors.amber : colors.green;
   const softFill = mode === "dark" ? `${accent}24` : `${accent}14`;
@@ -234,9 +234,9 @@ function TodayMetricCard({
           <Icon name={icon} size={21} color={accent} />
         </View>
         {isFlagged ? (
-          <Pill label="Review" icon="alert-circle" tone={accent} />
+          <Pill label={t("review")} icon="alert-circle" tone={accent} />
         ) : (
-          <Pill label="Stable" icon="check-circle" tone={accent} />
+          <Pill label={t("stable")} icon="check-circle" tone={accent} />
         )}
       </View>
 

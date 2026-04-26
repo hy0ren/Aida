@@ -4,7 +4,7 @@ import { demoData } from "@aida/shared";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function ProviderHistoryScreen() {
-  const { theme, patientProfile } = useAidaTheme();
+  const { theme, patientProfile, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const visits = useMemo(
     () =>
@@ -14,7 +14,7 @@ export default function ProviderHistoryScreen() {
     [patientName],
   );
   return (
-    <Screen title="History" subtitle="Recent provider-side appointment activity.">
+    <Screen title={t("history")} subtitle={t("providerHistorySubtitle")}>
       <View style={{ gap: 14, paddingBottom: 86 }}>
         {visits.map((visit, index) => (
           <Card key={visit.id}>

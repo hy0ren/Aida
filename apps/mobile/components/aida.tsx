@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TOKEN_KEY, getAuthProfile, updateAuthProfile, type AuthUser } from "../lib/api";
+import { t, type I18nKey } from "../lib/i18n";
 import { registerForPushNotificationsAsync } from "../lib/notifications";
 
 export const colors = {
@@ -141,6 +142,7 @@ type ThemeState = {
   setMode: (mode: ModeName) => void;
   setPalette: (palette: PaletteName) => void;
   setLanguage: (language: string) => void;
+  t: (key: I18nKey, vars?: Record<string, string | number>) => string;
   setNotifications: (enabled: boolean) => void;
   setCalendarSync: (enabled: boolean) => void;
   theme: {
@@ -522,6 +524,11 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
     };
   }, [mode, palette]);
 
+  const translate = useCallback(
+    (key: I18nKey, vars?: Record<string, string | number>) => t(language, key, vars),
+    [language],
+  );
+
   const value = useMemo(
     () => ({
       isReady,
@@ -549,6 +556,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       setMode,
       setPalette,
       setLanguage,
+      t: translate,
       setNotifications,
       setCalendarSync,
       theme,
@@ -574,6 +582,7 @@ export function AidaThemeProvider({ children }: { children: ReactNode }) {
       providerProfile,
       role,
       theme,
+      translate,
       updatePatientProfile,
       updateProviderProfile,
       userId,
@@ -626,7 +635,7 @@ export function SettingToggle({
 }
 
 export function PaletteSelector() {
-  const { palette, setPalette, theme } = useAidaTheme();
+  const { palette, setPalette, theme, t } = useAidaTheme();
   return (
     <View style={styles.paletteGrid}>
       {paletteKeys.map((key) => {
@@ -646,7 +655,15 @@ export function PaletteSelector() {
               <View style={[styles.paletteSwatch, { backgroundColor: item.accent }]} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.paletteLabel, { color: theme.ink }]}>{item.label}</Text>
-                <Text style={[styles.paletteDetail, { color: theme.muted }]}>{item.detail}</Text>
+                <Text style={[styles.paletteDetail, { color: theme.muted }]}>
+                  {key === "red"
+                    ? t("paletteDefault")
+                    : key === "ruby"
+                      ? t("paletteBold")
+                      : key === "plum"
+                        ? t("paletteCalm")
+                        : t("paletteClinical")}
+                </Text>
               </View>
               {selected && <Icon name="check-circle" size={18} color={item.accent} />}
             </View>
@@ -844,12 +861,12 @@ export function MetricCard({
   detail: string;
   flagged?: boolean;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
   return (
     <Card style={styles.metricCard}>
       <View style={styles.metricTop}>
         <Icon name={icon} size={18} color={flagged ? colors.amber : theme.accent} />
-        {flagged && <Pill label="Flagged" tone={colors.amber} />}
+        {flagged && <Pill label={t("flagged")} tone={colors.amber} />}
       </View>
       <Text style={[styles.metricValue, { color: theme.ink }]}>{value}</Text>
       <Text style={[styles.metricLabel, { color: theme.ink }]}>{label}</Text>

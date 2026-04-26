@@ -13,10 +13,10 @@ import {
   PrimaryButton,
 } from "../../components/aida";
 
-const filters = ["All", "Needs review", "Confirmed", "Flagged"];
+const filters = ["All", "Needs review", "Confirmed", "Flagged"] as const;
 
 export default function ProviderPatientsScreen() {
-  const { theme, patientProfile, language, userId } = useAidaTheme();
+  const { theme, patientProfile, language, userId, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const patientId = userId ?? demoData.patient.id;
 
@@ -84,7 +84,7 @@ export default function ProviderPatientsScreen() {
 
   async function handleSaveNotes() {
     if (!selectedAppt?.appointmentId) {
-      Alert.alert("Saved", "Notes saved locally (no appointment to attach to).");
+      Alert.alert(t("saved"), t("notesSavedLocal"));
       return;
     }
     setSaving(true);
@@ -93,16 +93,16 @@ export default function ProviderPatientsScreen() {
         appointmentId: selectedAppt.appointmentId,
         providerNotes: notes,
       });
-      Alert.alert("Saved", "Clinical notes saved to patient record.");
+      Alert.alert(t("saved"), t("clinicalNotesSaved"));
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "Failed to save notes.");
+      Alert.alert(t("error"), err instanceof Error ? err.message : t("failedToSaveNotes"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Screen title="Patient intake" subtitle="Search patients and review approved summaries.">
+    <Screen title={t("patientIntake")} subtitle={t("patientIntakeSubtitle")}>
       <View style={{ gap: 14, paddingBottom: 86 }}>
         <View
           style={{
@@ -121,7 +121,7 @@ export default function ProviderPatientsScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search name, reason, language"
+            placeholder={t("searchPatientPlaceholder")}
             placeholderTextColor={theme.faint}
             style={{ flex: 1, color: theme.ink, fontWeight: "700" }}
           />
@@ -146,7 +146,7 @@ export default function ProviderPatientsScreen() {
                     fontWeight: "900",
                   }}
                 >
-                  {item}
+                  {filterLabel(item, t)}
                 </Text>
               </View>
             </Pressable>
@@ -155,7 +155,7 @@ export default function ProviderPatientsScreen() {
 
         <Card>
           <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 10 }}>
-            Patients
+            {t("patients")}
           </Text>
           {filtered.map((patient, index) => (
             <Pressable key={patient.name} onPress={() => setSelected(patient)}>
@@ -186,7 +186,7 @@ export default function ProviderPatientsScreen() {
                   <Text style={{ color: theme.muted, marginTop: 3 }}>{patient.time} - {patient.reason}</Text>
                 </View>
                 <Pill
-                  label={patient.flagged ? "Flagged" : patient.status}
+                  label={patient.flagged ? t("flagged") : statusLabel(patient.status, t)}
                   tone={patient.flagged ? colors.amber : patient.status === "Completed" ? colors.faint : theme.accent}
                 />
               </View>
@@ -200,24 +200,28 @@ export default function ProviderPatientsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>{selected.name}</Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                Age {selected.age} - {selected.language} - {selected.insurance}
+                {t("ageLanguageInsurance", {
+                  age: selected.age,
+                  language: selected.language,
+                  insurance: selected.insurance,
+                })}
               </Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
             <Pill label={selected.specialty} icon="stethoscope" />
             <Pill label={selected.status} icon="clipboard-text-clock-outline" tone={colors.plum} />
-            {selected.flagged && <Pill label="Vitals flagged" icon="heart-pulse" tone={colors.amber} />}
+            {selected.flagged && <Pill label={t("vitalsFlagged")} icon="heart-pulse" tone={colors.amber} />}
             {realSummary?.source && (
               <Pill
-                label={realSummary.source === "gemini" ? "Gemini summary" : "Demo summary"}
+                label={realSummary.source === "gemini" ? t("geminiSummary") : t("demoSummary")}
                 icon="brain"
                 tone={realSummary.source === "gemini" ? colors.green : colors.faint}
               />
             )}
           </View>
           <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900", marginTop: 18 }}>
-            Approved summary
+            {t("approvedSummary")}
           </Text>
           {loading ? (
             <ActivityIndicator color={theme.accent} style={{ marginTop: 12 }} />
@@ -227,7 +231,7 @@ export default function ProviderPatientsScreen() {
 
           {selectedAppt && (
             <View style={{ marginTop: 16, gap: 6 }}>
-              <Text style={{ color: theme.ink, fontSize: 14, fontWeight: "900" }}>Appointment</Text>
+              <Text style={{ color: theme.ink, fontSize: 14, fontWeight: "900" }}>{t("appointment")}</Text>
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                 <Pill label={selectedAppt.doctor} icon="doctor" tone={colors.plum} />
                 <Pill label={formatApptTime(selectedAppt.scheduledAt)} icon="calendar" />
@@ -239,12 +243,12 @@ export default function ProviderPatientsScreen() {
 
         <Card>
           <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900", marginBottom: 10 }}>
-            Clinical Notes
+            {t("clinicalNotes")}
           </Text>
           <TextInput
             multiline
             numberOfLines={4}
-            placeholder="Post-visit documentation..."
+            placeholder={t("postVisitDocumentation")}
             placeholderTextColor={theme.faint}
             value={notes}
             onChangeText={setNotes}
@@ -261,7 +265,7 @@ export default function ProviderPatientsScreen() {
             }}
           />
           <PrimaryButton
-            label={saving ? "Saving..." : "Save Notes"}
+            label={saving ? t("saving") : t("saveNotes")}
             icon="content-save-outline"
             disabled={saving}
             onPress={handleSaveNotes}
@@ -282,4 +286,18 @@ function formatApptTime(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(d);
+}
+
+function filterLabel(filter: (typeof filters)[number], t: ReturnType<typeof useAidaTheme>["t"]) {
+  if (filter === "All") return t("all");
+  if (filter === "Needs review") return t("needsReview");
+  if (filter === "Confirmed") return t("confirmed");
+  return t("flagged");
+}
+
+function statusLabel(status: string, t: ReturnType<typeof useAidaTheme>["t"]) {
+  if (status === "Confirmed") return t("confirmed");
+  if (status === "Completed") return t("completed");
+  if (status === "Needs review") return t("needsReview");
+  return status;
 }

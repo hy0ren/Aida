@@ -20,7 +20,7 @@ export default function BookScreen() {
   const [insuranceState, setInsuranceState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [insurance, setInsurance] = useState<InsuranceVerificationResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const { theme, userId, language } = useAidaTheme();
+  const { theme, userId, language, t } = useAidaTheme();
   const selectedProvider = providers[selected];
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function BookScreen() {
           })),
         );
         setProviderState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Provider search failed.");
+        setErrorMessage(error instanceof Error ? error.message : t("showingDemoProviders", { error: "" }));
       });
 
     return () => {
@@ -73,7 +73,7 @@ export default function BookScreen() {
       .catch((error) => {
         if (!mounted) return;
         setInsuranceState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Insurance verification failed.");
+        setErrorMessage(error instanceof Error ? error.message : t("error"));
       });
 
     return () => {
@@ -83,8 +83,8 @@ export default function BookScreen() {
 
   return (
     <Screen
-      title="Schedule"
-      subtitle="Aida found clinics based on your approved summary, location, and insurance."
+      title={t("schedule")}
+      subtitle={t("scheduleSubtitle")}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card style={{ backgroundColor: theme.surface }}>
@@ -92,7 +92,7 @@ export default function BookScreen() {
             <Icon name="alert-circle-outline" size={24} color={colors.amber} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>
-                Suggested visit
+                {t("suggestedVisit")}
               </Text>
               <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 4 }}>
                 {recommendedVisit}
@@ -102,17 +102,17 @@ export default function BookScreen() {
         </Card>
 
         <Card>
-          <Text style={[sectionTitle, { color: theme.ink }]}>Insurance check</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>{t("insuranceCheck")}</Text>
           <ApiStatus state={insuranceState} error={errorMessage} />
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
             <Pill label={insurance?.insurance.carrier ?? demoData.insurance.detectedLabel} icon="card-account-details" />
             <Pill
-              label={`$${insurance?.insurance.estimatedCopay ?? 25} estimated copay`}
+              label={t("estimatedCopay", { amount: insurance?.insurance.estimatedCopay ?? 25 })}
               icon="cash"
               tone={colors.green}
             />
             <Pill
-              label={insurance?.eligible ? "Verified in-network" : demoData.insurance.networkStatus}
+              label={insurance?.eligible ? t("verifiedInNetwork") : demoData.insurance.networkStatus}
               icon="check"
               tone={theme.accent}
             />
@@ -124,14 +124,14 @@ export default function BookScreen() {
             <Card style={{ backgroundColor: theme.surface }}>
               <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
                 <ActivityIndicator color={theme.accent} />
-                <Text style={{ color: theme.ink, fontWeight: "800" }}>Finding in-network providers...</Text>
+                <Text style={{ color: theme.ink, fontWeight: "800" }}>{t("findingProviders")}</Text>
               </View>
             </Card>
           )}
           {providerState === "error" && (
             <Card style={{ backgroundColor: `${colors.red}10`, borderColor: `${colors.red}44` }}>
               <Text style={{ color: theme.ink, fontWeight: "800", lineHeight: 20 }}>
-                Showing saved demo providers. {errorMessage}
+                {t("showingDemoProviders", { error: errorMessage })}
               </Text>
             </Card>
           )}
@@ -168,7 +168,7 @@ export default function BookScreen() {
                       <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
                         <Pill label={clinic.distance} icon="map-marker" tone={colors.faint} />
                         <Pill
-                          label={clinic.networkStatus === "in-network" ? "In-network" : "Review plan"}
+                          label={clinic.networkStatus === "in-network" ? t("inNetwork") : t("reviewPlan")}
                           icon="shield-check"
                         />
                         <Pill label={formatSlot(clinic.nextAvailable)} icon="calendar-clock" tone={colors.plum} />
@@ -185,7 +185,7 @@ export default function BookScreen() {
         <PrimaryButton
           href={`/(patient)/call-status?providerId=${selectedProvider?.id ?? ""}`}
           icon="phone"
-          label={insuranceState === "loading" ? "Verifying insurance..." : "Book with AI agent"}
+          label={insuranceState === "loading" ? t("verifyingInsurance") : t("bookWithAiAgent")}
           disabled={!selectedProvider || insuranceState === "loading"}
         />
       </View>
@@ -200,7 +200,7 @@ function ApiStatus({
   state: "idle" | "loading" | "success" | "error";
   error: string;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
 
   if (state === "idle") return null;
 
@@ -217,9 +217,9 @@ function ApiStatus({
       )}
       <Text style={{ color: theme.muted, flex: 1, lineHeight: 18, fontWeight: "700" }}>
         {state === "loading"
-          ? "Checking eligibility with the mocked insurance endpoint."
+          ? t("checkingEligibility")
           : state === "success"
-            ? "Eligibility verified for the selected provider."
+            ? t("eligibilityVerified")
             : error}
       </Text>
     </View>

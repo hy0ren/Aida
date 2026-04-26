@@ -15,7 +15,7 @@ import {
 } from "../../components/aida";
 
 export default function SummaryScreen() {
-  const { theme, language, userId, patientProfile } = useAidaTheme();
+  const { theme, language, userId, patientProfile, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const personalizedSampleSummary = sampleSummary
     .replace(/Elena Morales/g, patientName)
@@ -23,11 +23,11 @@ export default function SummaryScreen() {
     .replace(/Spanish/g, language);
   const [summary, setSummary] = useState(personalizedSampleSummary);
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
-  const [statusMessage, setStatusMessage] = useState("Gemini is summarizing on-device cleaned biometrics in your language.");
+  const [statusMessage, setStatusMessage] = useState(t("summaryLoadingMessage"));
   const [shareItems, setShareItems] = useState([
-    "Approved summary",
-    "Insurance details",
-    `Preferred language: ${language}`,
+    t("approvedSummary"),
+    t("insuranceDetails"),
+    t("preferredLanguageLabel", { language }),
     demoData.selectedAppointment.reason,
   ]);
   const flaggedMetrics = demoData.biometricMetrics.filter((metric) => metric.status === "attention");
@@ -51,7 +51,7 @@ export default function SummaryScreen() {
       .catch((error) => {
         if (!mounted) return;
         setSummaryState("error");
-        setStatusMessage(error instanceof Error ? error.message : "Summary failed. Please try again.");
+        setStatusMessage(error instanceof Error ? error.message : t("summaryFailed"));
       });
 
     return () => {
@@ -61,16 +61,16 @@ export default function SummaryScreen() {
 
   return (
     <Screen
-      title="Review summary"
-      subtitle="Nothing is sent to a clinic until you approve it."
+      title={t("reviewSummary")}
+      subtitle={t("reviewSummarySubtitle")}
       action={<Pill label={`${language} + Gemini`} icon="translate" />}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card style={{ backgroundColor: theme.surface }}>
           <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-            <Pill label="Raw data stayed local" icon="shield-check" tone={colors.green} />
-            <Pill label="Patient approval required" icon="account-check" tone={theme.accent} />
-            <Pill label="Clinic-ready" icon="file-document-check" tone={colors.plum} />
+            <Pill label={t("rawDataStayedLocal")} icon="shield-check" tone={colors.green} />
+            <Pill label={t("patientApprovalRequired")} icon="account-check" tone={theme.accent} />
+            <Pill label={t("clinicReady")} icon="file-document-check" tone={colors.plum} />
           </View>
         </Card>
 
@@ -92,7 +92,7 @@ export default function SummaryScreen() {
         </View>
 
         <Card>
-          <Text style={[sectionTitle, { color: theme.ink }]}>Summary for your doctor</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>{t("summaryForDoctor")}</Text>
           <ApiStatus state={summaryState} message={statusMessage} />
           <TextInput
             multiline
@@ -110,12 +110,12 @@ export default function SummaryScreen() {
             }}
           />
           <Text style={{ color: theme.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}>
-            You can edit this before it is attached to the appointment request.
+            {t("editableSummaryHint")}
           </Text>
         </Card>
 
         <Card>
-          <Text style={[sectionTitle, { color: theme.ink }]}>What will be shared</Text>
+          <Text style={[sectionTitle, { color: theme.ink }]}>{t("whatWillBeShared")}</Text>
           <View style={{ gap: 8 }}>
             {shareItems.map((item, index) => (
               <Pill
@@ -129,8 +129,8 @@ export default function SummaryScreen() {
         </Card>
 
         <View style={{ gap: 10 }}>
-          <PrimaryButton href="/(patient)/book" icon="check" label="Approve and continue" />
-          <SecondaryButton href="/(patient)/upload" icon="pencil" label="Edit uploads" />
+          <PrimaryButton href="/(patient)/book" icon="check" label={t("approveAndContinue")} />
+          <SecondaryButton href="/(patient)/upload" icon="pencil" label={t("editUploads")} />
         </View>
       </View>
     </Screen>
@@ -144,7 +144,7 @@ function ApiStatus({
   state: "loading" | "success" | "error";
   message: string;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
   const tone = state === "success" ? colors.green : state === "error" ? colors.red : theme.accent;
 
   return (
@@ -163,7 +163,7 @@ function ApiStatus({
         <ActivityIndicator color={tone} />
       ) : (
         <Pill
-          label={state === "success" ? "Ready" : "Error"}
+          label={state === "success" ? t("ready") : t("error")}
           icon={state === "success" ? "check" : "alert-circle-outline"}
           tone={tone}
         />

@@ -9,7 +9,7 @@ import { listAppointments, listSummaries } from "../../lib/api";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function HistoryScreen() {
-  const { theme, userId, language, patientProfile } = useAidaTheme();
+  const { theme, userId, language, patientProfile, t } = useAidaTheme();
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
   const [apptState, setApptState] = useState<"loading" | "success" | "error">("loading");
   const [summaries, setSummaries] = useState<SummaryHistoryItem[]>([]);
@@ -31,9 +31,9 @@ export default function HistoryScreen() {
           .replace(/Elena/g, patientProfile.firstName)
           .replace(/Spanish/g, language),
         shareItems: [
-          "Approved clinician summary",
+          t("approvedClinicianSummary"),
           `${demoData.insurance.carrier} ${demoData.insurance.plan} insurance details`,
-          `Preferred language: ${language}`,
+          t("preferredLanguageLabel", { language }),
         ],
         biometricHighlights: [],
         createdAt: demoData.patient.createdAt,
@@ -41,7 +41,7 @@ export default function HistoryScreen() {
         approvedByPatient: true,
       },
     ],
-    [language, patientId, patientName, patientProfile.firstName],
+    [language, patientId, patientName, patientProfile.firstName, t],
   );
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function HistoryScreen() {
         if (!mounted) return;
         setSummaries(fallbackSummaries);
         setSummaryState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Unable to load summary history.");
+        setErrorMessage(error instanceof Error ? error.message : t("unableToLoadSummaryHistory"));
       });
 
     listAppointments(patientId)
@@ -78,8 +78,8 @@ export default function HistoryScreen() {
 
   return (
     <Screen
-      title="History"
-      subtitle="Appointments, summaries, and confirmation receipts stay organized here."
+      title={t("history")}
+      subtitle={t("historySubtitle")}
     >
       <View style={{ gap: 14, paddingBottom: 86 }}>
         {/* Appointments section */}
@@ -128,9 +128,9 @@ export default function HistoryScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <Icon name="brain" size={23} color={theme.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>AI health summaries</Text>
+              <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>{t("aiHealthSummaries")}</Text>
               <Text style={{ color: theme.muted, marginTop: 3 }}>
-                Previous Gemini summaries stored with your patient record.
+                {t("previousGeminiSummaries")}
               </Text>
             </View>
             {summaryState === "loading" && <ActivityIndicator color={theme.accent} />}
@@ -146,7 +146,7 @@ export default function HistoryScreen() {
               }}
             >
               <Text style={{ color: theme.ink, fontSize: 12, fontWeight: "800", lineHeight: 17 }}>
-                Showing demo summaries. {errorMessage}
+                {t("showingDemoSummaries", { error: errorMessage })}
               </Text>
             </View>
           )}
@@ -160,7 +160,7 @@ export default function HistoryScreen() {
         {!hasRealAppointments && (
           <Card>
             <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
-              Past visits
+              {t("pastVisits")}
             </Text>
             {demoData.appointmentHistory.slice(1).map((item, index) => (
               <View
@@ -197,7 +197,7 @@ function SummaryRow({
   item: SummaryHistoryItem;
   first: boolean;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
   return (
     <View
       style={{
@@ -211,16 +211,16 @@ function SummaryRow({
         <Icon name="file-document-check" size={22} color={theme.accent} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-            <Pill label={formatSummaryDate(item.createdAt)} icon="calendar" tone={colors.plum} />
+            <Pill label={formatSummaryDate(item.createdAt, t("savedSummary"))} icon="calendar" tone={colors.plum} />
             <Pill label={item.specialtyRecommendation} icon="stethoscope" tone={colors.amber} />
             <Pill
-              label={item.approvedByPatient ? "Approved" : "Draft"}
+              label={item.approvedByPatient ? t("approved") : t("draft")}
               icon={item.approvedByPatient ? "check" : "pencil"}
               tone={item.approvedByPatient ? colors.green : theme.faint}
             />
           </View>
           <Text style={{ color: theme.ink, fontWeight: "900", lineHeight: 20 }}>
-            {item.urgency === "urgent" ? "Urgent review" : item.urgency === "soon" ? "Review soon" : "Routine review"}
+            {item.urgency === "urgent" ? t("urgentReview") : item.urgency === "soon" ? t("reviewSoon") : t("routineReview")}
           </Text>
           <Text style={{ color: theme.muted, lineHeight: 21, marginTop: 6 }}>
             {item.summary}
@@ -231,9 +231,9 @@ function SummaryRow({
   );
 }
 
-function formatSummaryDate(value: string) {
+function formatSummaryDate(value: string, fallback: string) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Saved summary";
+  if (Number.isNaN(date.getTime())) return fallback;
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",

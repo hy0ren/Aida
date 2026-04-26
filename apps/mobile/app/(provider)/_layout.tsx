@@ -13,7 +13,7 @@ function tabIcon(name: TabIcon) {
 const hiddenTabOptions = { href: null };
 
 export default function ProviderLayout() {
-  const { isReady, isLoggedIn, onboardingComplete, role, theme, mode } = useAidaTheme();
+  const { isReady, isLoggedIn, onboardingComplete, role, theme, mode, t } = useAidaTheme();
 
   if (!isReady) return null;
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
@@ -45,10 +45,10 @@ export default function ProviderLayout() {
         },
       }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: "Today", tabBarIcon: tabIcon("view-dashboard-outline") }} />
-      <Tabs.Screen name="patients" options={{ title: "Patients", tabBarIcon: tabIcon("account-group-outline") }} />
-      <Tabs.Screen name="schedule" options={{ title: "Schedule", tabBarIcon: tabIcon("calendar-edit") }} />
-      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("cog-outline") }} />
+      <Tabs.Screen name="dashboard" options={{ title: t("today"), tabBarIcon: tabIcon("view-dashboard-outline") }} />
+      <Tabs.Screen name="patients" options={{ title: t("patients"), tabBarIcon: tabIcon("account-group-outline") }} />
+      <Tabs.Screen name="schedule" options={{ title: t("schedule"), tabBarIcon: tabIcon("calendar-edit") }} />
+      <Tabs.Screen name="settings" options={{ title: t("settings"), tabBarIcon: tabIcon("cog-outline") }} />
       <Tabs.Screen name="history" options={hiddenTabOptions} />
     </Tabs>
   );

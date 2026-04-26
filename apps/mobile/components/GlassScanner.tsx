@@ -27,7 +27,7 @@ export interface GlassScannerProps {
 }
 
 export function GlassScanner({ label, detail, value, onChange }: GlassScannerProps) {
-  const { theme, mode } = useAidaTheme();
+  const { theme, mode, t } = useAidaTheme();
   const [stage, setStage] = useState<"empty" | "capturing" | "processing" | "uploaded">("empty");
   const scanAnim = useRef(new Animated.Value(0)).current;
 
@@ -67,9 +67,9 @@ export function GlassScanner({ label, detail, value, onChange }: GlassScannerPro
     const media = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (camera.status !== "granted" || media.status !== "granted") {
       Alert.alert(
-        "Permissions required",
-        "Aida needs camera and photo library access to photograph your records.",
-        [{ text: "OK" }]
+        t("permissionsRequired"),
+        t("recordsCameraAccess"),
+        [{ text: t("ok") }]
       );
       return false;
     }
@@ -102,16 +102,16 @@ export function GlassScanner({ label, detail, value, onChange }: GlassScannerPro
       const message = err instanceof Error ? err.message : String(err);
       const noCamera = /not available|simulator/i.test(message);
       Alert.alert(
-        noCamera ? "Camera unavailable" : "Could not open photo",
+        noCamera ? t("cameraUnavailable") : t("couldNotOpenPhoto"),
         noCamera
-          ? "The camera is not available here (e.g. iOS Simulator). Use a real device, or pick from your library."
+          ? t("cameraUnavailableDetail")
           : message,
         noCamera
           ? [
-              { text: "Choose from library", onPress: () => void captureImage("library") },
-              { text: "OK", style: "cancel" },
+              { text: t("chooseFromLibrary"), onPress: () => void captureImage("library") },
+              { text: t("ok"), style: "cancel" },
             ]
-          : [{ text: "OK" }]
+          : [{ text: t("ok") }]
       );
       return;
     }
@@ -125,7 +125,7 @@ export function GlassScanner({ label, detail, value, onChange }: GlassScannerPro
     const base64Data = asset.base64 ?? "";
 
     if (!base64Data) {
-      Alert.alert("Error", "Could not read the selected image.");
+      Alert.alert(t("error"), t("couldNotReadImage"));
       setStage("empty");
       return;
     }
@@ -144,12 +144,12 @@ export function GlassScanner({ label, detail, value, onChange }: GlassScannerPro
       onChange(null);
       return;
     }
-    Alert.alert(label, "Take a clear photo or select from your library.", [
-      { text: "Take photo", onPress: () => captureImage("camera") },
-      { text: "Choose from library", onPress: () => captureImage("library") },
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(label, t("takeClearPhoto"), [
+      { text: t("takePhoto"), onPress: () => captureImage("camera") },
+      { text: t("chooseFromLibrary"), onPress: () => captureImage("library") },
+      { text: t("cancel"), style: "cancel" },
     ]);
-  }, [label, stage, captureImage, onChange]);
+  }, [label, stage, captureImage, onChange, t]);
 
   const isProcessing = stage === "processing";
   const isUploaded = stage === "uploaded";
@@ -220,11 +220,11 @@ export function GlassScanner({ label, detail, value, onChange }: GlassScannerPro
         <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>{label}</Text>
         <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 3 }}>
           {isProcessing
-            ? "Reading text via ZETIC Melange…"
+            ? t("readingText")
             : isUploaded
-            ? "Captured — tap to replace"
+            ? t("capturedTapReplace")
             : isCapturing
-            ? "Opening camera…"
+            ? t("openingCamera")
             : detail}
         </Text>
       </View>
@@ -232,12 +232,12 @@ export function GlassScanner({ label, detail, value, onChange }: GlassScannerPro
       {isProcessing && <ActivityIndicator size="small" color={colors.amber} />}
       {isUploaded && (
         <View style={[styles.glassPill, { backgroundColor: `${theme.accent}20` }]}>
-          <Text style={{ color: theme.accent, fontWeight: "900", fontSize: 12 }}>Replace</Text>
+          <Text style={{ color: theme.accent, fontWeight: "900", fontSize: 12 }}>{t("replace")}</Text>
         </View>
       )}
       {stage === "empty" && (
         <View style={[styles.glassPill, { backgroundColor: `${theme.accent}15` }]}>
-          <Text style={{ color: theme.accent, fontWeight: "900", fontSize: 12 }}>Add</Text>
+          <Text style={{ color: theme.accent, fontWeight: "900", fontSize: 12 }}>{t("add")}</Text>
         </View>
       )}
     </Pressable>

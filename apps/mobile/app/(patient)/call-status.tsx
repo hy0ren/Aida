@@ -9,7 +9,7 @@ import { Icon, PrimaryButton, useAidaTheme } from "../../components/aida";
 export default function CallStatusScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ providerId?: string }>();
-  const { language, theme, userId, patientProfile } = useAidaTheme();
+  const { language, theme, userId, patientProfile, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const [stage, setStage] = useState(0);
   const [lineCount, setLineCount] = useState(1);
@@ -40,7 +40,7 @@ export default function CallStatusScreen() {
       .catch((error) => {
         if (!mounted) return;
         setCallState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Call could not be initiated. Check your connection.");
+        setErrorMessage(error instanceof Error ? error.message : t("callFailedConnection"));
       });
 
     return () => {
@@ -91,7 +91,7 @@ export default function CallStatusScreen() {
             textAlign: "center",
           }}
         >
-          {callState === "loading" ? "Starting call" : callState === "error" ? "Call paused" : stages[stage]}
+          {callState === "loading" ? t("startingCall") : callState === "error" ? t("callPaused") : stages[stage]}
         </Text>
         <View
           style={{
@@ -118,7 +118,7 @@ export default function CallStatusScreen() {
         <Text style={{ color: "#d4d4d8", marginTop: 8 }}>
           {callState === "error"
             ? errorMessage
-            : `Speaking English to the clinic, updating you in ${language}.`}
+            : t("speakingLanguage", { language })}
         </Text>
         {callState === "success" && session && (
           <View
@@ -132,7 +132,7 @@ export default function CallStatusScreen() {
             }}
           >
             <Text style={{ color: session.liveCall ? "#eafff9" : "#a1a1aa", fontWeight: "900", fontSize: 12 }}>
-              {session.liveCall ? "LIVE ELEVENLABS CALL" : "DEMO CALL SESSION"}
+              {session.liveCall ? t("liveElevenLabsCall") : t("demoCallSession")}
             </Text>
           </View>
         )}
@@ -143,7 +143,7 @@ export default function CallStatusScreen() {
           {callState === "loading" && (
             <View style={{ alignItems: "center", gap: 12 }}>
               <ActivityIndicator color="#eafff9" />
-              <Text style={{ color: "#eafff9", fontWeight: "800" }}>Requesting AI call session...</Text>
+              <Text style={{ color: "#eafff9", fontWeight: "800" }}>{t("requestingAiCallSession")}</Text>
             </View>
           )}
           {callState !== "loading" && transcript.slice(0, lineCount).map((line, index) => (
@@ -168,7 +168,7 @@ export default function CallStatusScreen() {
         {callState === "error" && (
           <PrimaryButton
             icon="phone"
-            label="Retry call"
+            label={t("retryCall")}
             onPress={() => {
               setCallState("loading");
               setErrorMessage("");
@@ -188,7 +188,7 @@ export default function CallStatusScreen() {
                 })
                 .catch((error) => {
         setCallState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Call could not be initiated. Check your connection.");
+        setErrorMessage(error instanceof Error ? error.message : t("callFailedConnection"));
       });
     }}
     tone={theme.accent}
@@ -197,7 +197,7 @@ export default function CallStatusScreen() {
         {callState === "success" && stage === stages.length - 1 && (
           <PrimaryButton
             icon="check"
-            label="View confirmation"
+            label={t("viewConfirmation")}
             onPress={() => router.replace(`/(patient)/confirmation?callSessionId=${session?.callSessionId ?? ""}`)}
             tone="#2f855a"
           />

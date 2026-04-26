@@ -13,7 +13,7 @@ import {
 } from "../../components/aida";
 
 export default function ProviderDashboardScreen() {
-  const { theme, language, patientProfile, userId } = useAidaTheme();
+  const { theme, language, patientProfile, userId, t } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
   const patientId = userId ?? demoData.patient.id;
 
@@ -42,7 +42,7 @@ export default function ProviderDashboardScreen() {
     : demoData.providerIntake.aiBookedNeedingReview;
 
   return (
-    <Screen title="Today" subtitle={`${demoData.providers[0].name} appointment queue.`}>
+    <Screen title={t("today")} subtitle={t("providerQueueSubtitle", { clinic: demoData.providers[0].name })}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card style={{ backgroundColor: theme.accent }}>
           {loading ? (
@@ -53,10 +53,14 @@ export default function ProviderDashboardScreen() {
                 {visitsToday}
               </Text>
               <Text style={{ color: "#fff", fontWeight: "900", marginTop: 4 }}>
-                visits today
+                {t("visitsToday")}
               </Text>
               <Text style={{ color: "rgba(255,255,255,0.82)", lineHeight: 20, marginTop: 8 }}>
-                {aiBooked} AI-booked appointment{aiBooked === 1 ? "" : "s"} need{aiBooked === 1 ? "s" : ""} intake review.
+                {t("aiBookedNeedsReview", {
+                  count: aiBooked,
+                  suffix: aiBooked === 1 ? "" : "s",
+                  verbSuffix: aiBooked === 1 ? "s" : "",
+                })}
               </Text>
             </>
           )}
@@ -74,21 +78,21 @@ export default function ProviderDashboardScreen() {
                   : `${demoData.selectedAppointment.timeLabel} - ${demoData.selectedAppointment.visitType}`}
               </Text>
             </View>
-            <Pill label="AI booked" icon="creation" />
+            <Pill label={t("aiBooked")} icon="creation" />
           </View>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <Pill label={language} icon="translate" tone={colors.plum} />
             <Pill label={demoData.insurance.carrier} icon="shield-check" tone={colors.green} />
-            <Pill label="Vitals flagged" icon="heart-pulse" tone={colors.amber} />
+            <Pill label={t("vitalsFlagged")} icon="heart-pulse" tone={colors.amber} />
           </View>
           <View style={{ marginTop: 16 }}>
-            <PrimaryButton href="/(provider)/patients" icon="file-document-check" label="Review intake" />
+            <PrimaryButton href="/(provider)/patients" icon="file-document-check" label={t("reviewIntake")} />
           </View>
         </Card>
 
         <Card>
           <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
-            Pending confirmations
+            {t("pendingConfirmations")}
           </Text>
           {hasRealAppts ? (
             appointments
@@ -107,7 +111,7 @@ export default function ProviderDashboardScreen() {
           )}
           {hasRealAppts && appointments.filter((a) => a.status === "pending").length === 0 && (
             <Text style={{ color: theme.muted, fontWeight: "700" }}>
-              All appointments confirmed.
+              {t("allAppointmentsConfirmed")}
             </Text>
           )}
         </Card>

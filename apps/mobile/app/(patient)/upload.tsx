@@ -25,7 +25,7 @@ const intakeNotes = demoData.healthSummary.notesForAida;
 
 export default function UploadScreen() {
   const router = useRouter();
-  const { theme, mode, userId } = useAidaTheme();
+  const { theme, mode, userId, t } = useAidaTheme();
 
   // Insurance card state
   const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
@@ -53,7 +53,7 @@ export default function UploadScreen() {
 
   // Upload state
   const [uploadState, setUploadState] = useState<ApiState>("idle");
-  const [uploadMessage, setUploadMessage] = useState("Ready to generate a clinician-ready summary.");
+  const [uploadMessage, setUploadMessage] = useState(t("generateSummary"));
 
   const insuranceComplete = Boolean(frontCard && backCard);
   const healthComplete = healthUploaded || manualEntry;
@@ -64,7 +64,7 @@ export default function UploadScreen() {
     if (!canGenerate || uploadState === "loading") return;
 
     setUploadState("loading");
-    setUploadMessage("Uploading intake packet and processing securely…");
+    setUploadMessage(t("uploading"));
 
     // Build the files array with base64 data
     const files: Array<{
@@ -115,35 +115,35 @@ export default function UploadScreen() {
       setTimeout(() => router.push("/(patient)/summary"), 650);
     } catch (error) {
       setUploadState("error");
-      setUploadMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
+      setUploadMessage(error instanceof Error ? error.message : t("error"));
     }
   };
 
   const reviewItems = useMemo(
     () => [
       {
-        label: "Insurance",
-        value: insuranceComplete ? "Ready for eligibility check" : "Needs front and back",
+        label: t("insurance"),
+        value: insuranceComplete ? t("readyForEligibilityCheck") : t("needsFrontAndBack"),
         done: insuranceComplete,
       },
       {
-        label: "Health data",
-        value: healthComplete ? "Ready to summarize" : "Upload data or enter manually",
+        label: t("healthData"),
+        value: healthComplete ? t("readyToSummarize") : t("uploadOrManual"),
         done: healthComplete,
       },
       {
-        label: "Notes",
-        value: "Optional context included",
+        label: t("notes"),
+        value: t("optionalContextIncluded"),
         done: true,
       },
     ],
-    [healthComplete, insuranceComplete],
+    [healthComplete, insuranceComplete, t],
   );
 
   return (
     <Screen
-      title="Upload"
-      subtitle="Add the records Aida needs to verify coverage and prepare a clinician-ready summary."
+      title={t("upload")}
+      subtitle={t("uploadSubtitle")}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card style={{ backgroundColor: theme.surface }}>
@@ -152,36 +152,36 @@ export default function UploadScreen() {
               <Icon name="cloud-upload" size={26} color={theme.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.kicker, { color: theme.muted }]}>Secure intake</Text>
+              <Text style={[styles.kicker, { color: theme.muted }]}>{t("secureIntake")}</Text>
               <Text style={[styles.heroTitle, { color: theme.ink }]}>
-                Upload now, edit before sending.
+                {t("uploadNowEditBeforeSending")}
               </Text>
             </View>
           </View>
           <View style={styles.progressRow}>
-            <ProgressStep label="Insurance" active done={insuranceComplete} />
-            <ProgressStep label="Health data" active={insuranceComplete} done={healthComplete} />
-            <ProgressStep label="Review" active={canGenerate} done={canGenerate} />
+            <ProgressStep label={t("insurance")} active done={insuranceComplete} />
+            <ProgressStep label={t("healthData")} active={insuranceComplete} done={healthComplete} />
+            <ProgressStep label={t("reviewStep")} active={canGenerate} done={canGenerate} />
           </View>
         </Card>
 
         <Card>
           <SectionHeader
             icon="card-account-details"
-            title="Insurance card"
-            detail="Take or upload clear photos of both sides."
+            title={t("insuranceCard")}
+            detail={t("insuranceCardDetail")}
             complete={insuranceComplete}
           />
           <View style={{ gap: 10 }}>
             <GlassScanner
-              label="Front of card"
-              detail="Name, plan, member ID"
+              label={t("frontOfCard")}
+              detail={t("frontOfCardDetail")}
               value={frontCard}
               onChange={setFrontCard}
             />
             <GlassScanner
-              label="Back of card"
-              detail="Claims phone and payer details"
+              label={t("backOfCard")}
+              detail={t("backOfCardDetail")}
               value={backCard}
               onChange={setBackCard}
             />
@@ -189,33 +189,33 @@ export default function UploadScreen() {
 
           <View style={[styles.parsedPanel, { borderColor: theme.line, backgroundColor: theme.surface }]}>
             <View style={styles.rowBetween}>
-              <Text style={[styles.sectionTitle, { color: theme.ink }]}>Detected details</Text>
-              <Pill label={insuranceComplete ? "Verified format" : "Draft"} icon="text-recognition" />
+              <Text style={[styles.sectionTitle, { color: theme.ink }]}>{t("detectedDetails")}</Text>
+              <Pill label={insuranceComplete ? t("verifiedFormat") : t("draft")} icon="text-recognition" />
             </View>
             <View style={{ gap: 10, marginTop: 12 }}>
               <Field
-                label="Carrier"
+                label={t("carrier")}
                 value={detectedInsurance.carrier}
                 onChangeText={(value) => updateDetectedInsurance("carrier", value)}
                 autoCapitalize="words"
                 autoCorrect={false}
               />
               <Field
-                label="Plan"
+                label={t("plan")}
                 value={detectedInsurance.plan}
                 onChangeText={(value) => updateDetectedInsurance("plan", value)}
                 autoCapitalize="words"
                 autoCorrect={false}
               />
               <Field
-                label="Member ID"
+                label={t("memberId")}
                 value={detectedInsurance.memberId}
                 onChangeText={(value) => updateDetectedInsurance("memberId", value)}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
               <Field
-                label="Group number"
+                label={t("groupNumber")}
                 value={detectedInsurance.groupNumber}
                 onChangeText={(value) => updateDetectedInsurance("groupNumber", value)}
                 autoCapitalize="characters"
@@ -228,20 +228,20 @@ export default function UploadScreen() {
         <Card>
           <SectionHeader
             icon="heart-pulse"
-            title="Health data"
-            detail="Use a wearable export, lab file, or manual entry."
+            title={t("healthData")}
+            detail={t("healthDataDetail")}
             complete={healthComplete}
           />
 
           <View style={[styles.segmented, { backgroundColor: theme.surface, borderColor: theme.line }]}>
             <SegmentButton
-              label="Upload"
+              label={t("upload")}
               icon="file-upload"
               active={healthMode === "file"}
               onPress={() => setHealthMode("file")}
             />
             <SegmentButton
-              label="Manual"
+              label={t("manual")}
               icon="pencil"
               active={healthMode === "manual"}
               onPress={() => setHealthMode("manual")}
@@ -277,7 +277,7 @@ export default function UploadScreen() {
               </View>
               <UploadDropzone
                 label={`${healthSource} export`}
-                detail="CSV, PDF, XML, or zipped export"
+                detail={t("csvPdfXml")}
                 status={healthUploaded ? "uploaded" : "ready"}
                 onPress={() => setHealthUploaded((value) => !value)}
               />
@@ -293,28 +293,28 @@ export default function UploadScreen() {
             <View style={{ gap: 12 }}>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Resting HR" value={demoData.healthSummary.manualMeasurements.restingHeartRate} />
+                  <Field label={t("restingHr")} value={demoData.healthSummary.manualMeasurements.restingHeartRate} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="HRV" value={demoData.healthSummary.manualMeasurements.hrv} />
+                  <Field label={t("hrv")} value={demoData.healthSummary.manualMeasurements.hrv} />
                 </View>
               </View>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Sleep" value={demoData.healthSummary.manualMeasurements.sleep} />
+                  <Field label={t("sleep")} value={demoData.healthSummary.manualMeasurements.sleep} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="Blood pressure" value={demoData.healthSummary.manualMeasurements.bloodPressure} />
+                  <Field label={t("bloodPressure")} value={demoData.healthSummary.manualMeasurements.bloodPressure} />
                 </View>
               </View>
               <Field
-                label="Symptoms or measurements"
+                label={t("symptomsMeasurements")}
                 multiline
                 value={demoData.healthSummary.manualMeasurements.symptoms}
               />
               <SecondaryButton
                 icon={manualEntry ? "check" : "content-save"}
-                label={manualEntry ? "Manual data saved" : "Save manual data"}
+                label={manualEntry ? t("manualDataSaved") : t("saveManualData")}
                 onPress={() => setManualEntry((value) => !value)}
               />
             </View>
@@ -324,10 +324,10 @@ export default function UploadScreen() {
         <Card>
           <SectionHeader
             icon="note-text-outline"
-            title="Optional notes"
-            detail="Add anything that should shape the summary or booking call."
+            title={t("optionalNotes")}
+            detail={t("optionalNotesDetail")}
           />
-          <Field label="Notes for Aida" multiline value={intakeNotes} />
+          <Field label={t("notesForAida")} multiline value={intakeNotes} />
         </Card>
 
         <Card style={{ backgroundColor: theme.surface }}>
@@ -336,10 +336,10 @@ export default function UploadScreen() {
               <Icon name="shield-check" size={24} color={theme.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.ink, fontWeight: "900", fontSize: 16 }}>
-                  Review before Aida sends anything
+                  {t("reviewBeforeSending")}
                 </Text>
                 <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 4 }}>
-                  Raw files stay private until you approve the generated summary and appointment request.
+                  {t("rawFilesPrivate")}
                 </Text>
               </View>
             </View>
@@ -359,14 +359,14 @@ export default function UploadScreen() {
             icon="creation"
             label={
               uploadState === "loading"
-                ? "Uploading…"
+                ? t("uploading")
                 : canGenerate
-                  ? "Generate summary"
-                  : "Complete required uploads"
+                  ? t("generateSummary")
+                  : t("completeRequiredUploads")
             }
             disabled={!canGenerate || uploadState === "loading"}
           />
-          <SecondaryButton href="/(patient)/home" icon="home" label="Return home" />
+          <SecondaryButton href="/(patient)/home" icon="home" label={t("returnHome")} />
         </View>
       </View>
     </Screen>
@@ -413,7 +413,7 @@ function SectionHeader({
   detail: string;
   complete?: boolean;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
       <View style={[styles.smallIconBadge, { backgroundColor: `${theme.accent}14` }]}>
@@ -424,7 +424,7 @@ function SectionHeader({
           <Text style={[styles.sectionTitle, { color: theme.ink }]}>{title}</Text>
           {complete !== undefined && (
             <Pill
-              label={complete ? "Complete" : "Required"}
+              label={complete ? t("complete") : t("required")}
               icon={complete ? "check" : "alert-circle-outline"}
               tone={complete ? colors.green : colors.amber}
             />
@@ -447,7 +447,7 @@ function UploadDropzone({
   status: "empty" | "ready" | "uploaded";
   onPress: () => void;
 }) {
-  const { theme } = useAidaTheme();
+  const { theme, t } = useAidaTheme();
   const uploaded = status === "uploaded";
   return (
     <Pressable
@@ -470,11 +470,11 @@ function UploadDropzone({
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900" }}>{label}</Text>
         <Text style={{ color: theme.muted, lineHeight: 19, marginTop: 3 }}>
-          {uploaded ? "Uploaded and ready to review" : detail}
+          {uploaded ? t("uploadedAndReady") : detail}
         </Text>
       </View>
       <Text style={{ color: theme.accent, fontWeight: "900" }}>
-        {uploaded ? "Replace" : "Add"}
+        {uploaded ? t("replace") : t("add")}
       </Text>
     </Pressable>
   );
