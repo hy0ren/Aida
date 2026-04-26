@@ -1,51 +1,104 @@
 import { NextResponse } from 'next/server';
 import { callSessionResponse } from '../../_mock/aida-demo';
 
+const ELEVENLABS_OUTBOUND_CALL_URL = "https://api.elevenlabs.io/v1/convai/twilio/outbound-call";
+const DEFAULT_TO_NUMBER = "+17143921298";
+const E164_PHONE_RE = /^\+[1-9]\d{7,14}$/;
+
+type InitiateCallBody = {
+  providerId?: string;
+  patientId?: string;
+  summaryId?: string;
+  toNumber?: string;
+};
+
+type ElevenLabsOutboundCallResponse = {
+  success?: boolean;
+  message?: string;
+  conversation_id?: string | null;
+  callSid?: string | null;
+};
+
+function resolveToNumber(body: InitiateCallBody) {
+  return body.toNumber?.trim() || process.env.ELEVENLABS_DEFAULT_TO_NUMBER || DEFAULT_TO_NUMBER;
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = (await req.json().catch(() => ({}))) as InitiateCallBody;
+    const providerId = body.providerId;
+    const baseSession = callSessionResponse(providerId);
+    const toNumber = resolveToNumber(body);
     
     const apiKey = process.env.ELEVENLABS_API_KEY;
     const agentId = process.env.ELEVENLABS_AGENT_ID;
+    const agentPhoneNumberId = process.env.ELEVENLABS_AGENT_PHONE_NUMBER_ID;
+    const liveCallsEnabled = process.env.ELEVENLABS_LIVE_CALLS === "true";
 
-    if (!apiKey || !agentId) {
-      console.warn("ElevenLabs credentials missing. Falling back to mock call session.");
+    if (!E164_PHONE_RE.test(toNumber)) {
+      return NextResponse.json(
+        { ok: false, error: "ElevenLabs toNumber must be in E.164 format, for example +17143921298." },
+        { status: 400 },
+      );
+    }
+
+    if (!liveCallsEnabled || !apiKey || !agentId || !agentPhoneNumberId) {
+      console.warn("ElevenLabs live calls disabled or credentials missing. Falling back to mock call session.");
       return NextResponse.json({
         ok: true,
-        data: callSessionResponse(body.providerId),
+        data: {
+          ...baseSession,
+          toNumber,
+          liveCall: false,
+          warning: liveCallsEnabled
+            ? "Missing ELEVENLABS_API_KEY, ELEVENLABS_AGENT_ID, or ELEVENLABS_AGENT_PHONE_NUMBER_ID."
+            : "Set ELEVENLABS_LIVE_CALLS=true to place a live ElevenLabs call.",
+        },
       });
     }
 
-    // Example fetch to ElevenLabs conversational AI to start an outbound call to the clinic
-    const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}/calls`, {
+    const response = await fetch(ELEVENLABS_OUTBOUND_CALL_URL, {
       method: 'POST',
       headers: {
         'xi-api-key': apiKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        recipient_phone_number: body.clinicPhone || "+1234567890",
-        dynamic_variables: {
-          patient_name: body.patientName || "Jane Doe",
-          provider_name: body.providerName || "Dr. Smith",
-          specialty: body.specialty || "General",
-        }
+        agent_id: agentId,
+        agent_phone_number_id: agentPhoneNumberId,
+        to_number: toNumber,
+        conversation_initiation_client_data: {
+          dynamic_variables: {
+            patient_name: "Elena Morales",
+            clinic_name: baseSession.clinicName,
+            provider_name: baseSession.appointment.doctor,
+            specialty: baseSession.appointment.specialty,
+            appointment_reason: "Elevated resting heart rate and fatigue",
+            preferred_language: "Spanish",
+            summary_id: body.summaryId ?? "",
+            patient_id: body.patientId ?? baseSession.patientId,
+          },
+        },
       })
     });
 
+    const responseText = await response.text();
     if (!response.ok) {
-      throw new Error("Failed to initiate ElevenLabs call: " + await response.text());
+      throw new Error("Failed to initiate ElevenLabs call: " + responseText);
     }
 
-    const elevenLabsData = await response.json();
+    const elevenLabsData = JSON.parse(responseText) as ElevenLabsOutboundCallResponse;
     
-    // Mix the mock response with real call ID
     return NextResponse.json({
       ok: true,
       data: {
-        ...callSessionResponse(body.providerId),
-        callSessionId: elevenLabsData.call_id || "call-" + Math.random().toString(36).substring(7),
-        status: 'calling'
+        ...baseSession,
+        callSessionId: elevenLabsData.conversation_id ?? baseSession.callSessionId,
+        elevenLabsConversationId: elevenLabsData.conversation_id ?? undefined,
+        callSid: elevenLabsData.callSid ?? undefined,
+        toNumber,
+        liveCall: true,
+        status: 'calling',
       },
     });
 
@@ -53,8 +106,12 @@ export async function POST(req: Request) {
     console.error("ElevenLabs Error:", error);
     return NextResponse.json({
       ok: true,
-      data: callSessionResponse(),
-      warning: "Live call initiation failed; returned demo call session.",
+      data: {
+        ...callSessionResponse(),
+        toNumber: DEFAULT_TO_NUMBER,
+        liveCall: false,
+        warning: "Live call initiation failed; returned demo call session.",
+      },
     });
   }
 }

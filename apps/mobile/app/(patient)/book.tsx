@@ -12,6 +12,8 @@ import {
   useAidaTheme,
 } from "../../components/aida";
 
+const DEMO_ELEVENLABS_TO_NUMBER = "+17143921298";
+
 export default function BookScreen() {
   const [selected, setSelected] = useState(0);
   const [providers, setProviders] = useState<ProviderOption[]>([]);
@@ -183,7 +185,7 @@ export default function BookScreen() {
         </View>
 
         <PrimaryButton
-          href={`/(patient)/call-status?providerId=${selectedProvider?.id ?? ""}`}
+          href={`/(patient)/call-status?providerId=${selectedProvider?.id ?? ""}&toNumber=${encodeURIComponent(DEMO_ELEVENLABS_TO_NUMBER)}`}
           icon="phone"
           label={insuranceState === "loading" ? "Verifying insurance..." : "Book with AI agent"}
           disabled={!selectedProvider || insuranceState === "loading"}

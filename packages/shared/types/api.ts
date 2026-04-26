@@ -115,6 +115,11 @@ export interface CallSessionResponse {
   providerId: string;
   clinicName: string;
   status: 'queued' | 'calling' | 'connected' | 'confirmed';
+  toNumber?: string;
+  elevenLabsConversationId?: string;
+  callSid?: string;
+  liveCall?: boolean;
+  warning?: string;
   stages: string[];
   transcript: string[];
   appointment: {

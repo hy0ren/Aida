@@ -172,7 +172,12 @@ export function verifyInsurance(body: { providerId?: string; patientId?: string 
   return apiPost<InsuranceVerificationResponse>('/book/verify-insurance', body);
 }
 
-export function initiateCall(body: { providerId?: string; patientId?: string; summaryId?: string }) {
+export function initiateCall(body: {
+  providerId?: string;
+  patientId?: string;
+  summaryId?: string;
+  toNumber?: string;
+}) {
   return apiPost<CallSessionResponse>('/book/initiate-call', body);
 }
 

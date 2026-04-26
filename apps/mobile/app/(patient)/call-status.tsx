@@ -6,9 +6,11 @@ import { demoData, type CallSessionResponse } from "@aida/shared";
 import { initiateCall } from "../../lib/api";
 import { Icon, PrimaryButton, useAidaTheme } from "../../components/aida";
 
+const DEMO_ELEVENLABS_TO_NUMBER = "+17143921298";
+
 export default function CallStatusScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ providerId?: string }>();
+  const params = useLocalSearchParams<{ providerId?: string; toNumber?: string }>();
   const { language, theme } = useAidaTheme();
   const [stage, setStage] = useState(0);
   const [lineCount, setLineCount] = useState(1);
@@ -26,6 +28,7 @@ export default function CallStatusScreen() {
       providerId: params.providerId ?? demoData.providers[0].id,
       patientId: demoData.patient.id,
       summaryId: demoData.healthSummary.id,
+      toNumber: params.toNumber ?? DEMO_ELEVENLABS_TO_NUMBER,
     })
       .then((response) => {
         if (!mounted) return;
@@ -160,6 +163,7 @@ export default function CallStatusScreen() {
                 providerId: params.providerId ?? demoData.providers[0].id,
                 patientId: demoData.patient.id,
                 summaryId: demoData.healthSummary.id,
+                toNumber: params.toNumber ?? DEMO_ELEVENLABS_TO_NUMBER,
               })
                 .then((response) => {
                   setSession(response);
