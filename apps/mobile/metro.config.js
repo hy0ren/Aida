@@ -8,6 +8,12 @@ const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, "../..");
 const rootNodeModules = path.join(workspaceRoot, "node_modules");
 const projectNodeModules = path.join(projectRoot, "node_modules");
+const nestedExpoApplication = path.join(
+  projectNodeModules,
+  "expo-notifications",
+  "node_modules",
+  "expo-application"
+);
 
 /** React must be 19.1.x to match RN’s react-native-renderer (repo root may have 19.2.x for Next.js). */
 function resolveReactDir() {
@@ -35,6 +41,9 @@ config.resolver.nodeModulesPaths = [projectNodeModules, rootNodeModules].filter(
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   react: resolveReactDir(),
+  ...(existsSync(path.join(nestedExpoApplication, "package.json"))
+    ? { "expo-application": nestedExpoApplication }
+    : {}),
 };
 
 module.exports = config;
