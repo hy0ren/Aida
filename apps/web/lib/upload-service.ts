@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import {
   demoData,
+  type InsuranceCardExtraction,
   type ListUploadsData,
   type UploadListItem,
   type UploadResponse,
@@ -12,6 +13,10 @@ import {
   demoUploadResponse,
 } from "@/app/api/_mock/aida-demo";
 import { isCloudinaryConfigured, uploadBase64ToCloudinary } from "@/lib/cloudinary-server";
+import {
+  mergeInsuranceProfile,
+  parseInsuranceCardImagesWithGemini,
+} from "@/lib/insurance-card-parser";
 import { collections, getDb, isMongoConfigured } from "@/lib/mongodb";
 
 export type UploadRequestBody = {
@@ -29,9 +34,9 @@ export type UploadRequestBody = {
 };
 
 /**
- * 1) Optional file payloads → Cloudinary (`aida/uploads/{uploadId}/…`).
- * 2) Document → Mongo `uploads` (when `MONGODB_URI` is set).
- * 3) Response always matches `UploadResponse` (insurance / biometrics stay demo until OCR is wired).
+ * 1) Optional insurance-card images → Gemini 2.5 Flash extraction.
+ * 2) Optional file payloads → Cloudinary (`aida/uploads/{uploadId}/…`) when configured.
+ * 3) Document → Mongo `uploads` (when `MONGODB_URI` is set).
  */
 export async function processUploadIntake(body: UploadRequestBody): Promise<{
   data: UploadResponse;
@@ -43,13 +48,34 @@ export async function processUploadIntake(body: UploadRequestBody): Promise<{
   /** Insurance is the gate for the summary flow; health (sync, manual, or files) is optional. */
   const readyForSummary = Boolean(body.insuranceComplete ?? true);
 
+  const submittedFiles = body.files ?? [];
+  const insuranceCardFiles = submittedFiles.filter(
+    (file) => file.type === "insurance-front" || file.type === "insurance-back"
+  );
+  let insuranceExtraction: InsuranceCardExtraction | undefined;
+  try {
+    insuranceExtraction = await parseInsuranceCardImagesWithGemini(insuranceCardFiles);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown Gemini insurance-card parse error";
+    console.error("[Gemini] Insurance-card parsing failed:", message);
+    insuranceExtraction = {
+      source: "not-run",
+      confidence: 0,
+      needsReview: true,
+      reviewReason: message,
+    };
+  }
+  if (insuranceExtraction?.source === "not-run") {
+    console.warn("[Gemini] Insurance-card parsing skipped:", insuranceExtraction.reviewReason);
+  }
+
   let files: UploadedFile[] = demoUploadResponse.files.map((f) => ({ ...f }));
 
-  if (body.files?.length && isCloudinaryConfigured()) {
+  if (submittedFiles.length && isCloudinaryConfigured()) {
     const folder = `aida/uploads/${uploadId}`;
     const uploaded: UploadedFile[] = [];
-    for (let i = 0; i < body.files.length; i += 1) {
-      const file = body.files[i];
+    for (let i = 0; i < submittedFiles.length; i += 1) {
+      const file = submittedFiles[i];
       const { secureUrl, publicId } = await uploadBase64ToCloudinary(file.data, {
         folder,
         publicId: `${file.type.replace(/[^a-z-]/g, "")}-${i}`,
@@ -59,19 +85,38 @@ export async function processUploadIntake(body: UploadRequestBody): Promise<{
         name: file.name,
         type: file.type,
         source: "cloudinary",
-        status: "processed",
+        status:
+          (file.type === "insurance-front" || file.type === "insurance-back") &&
+          insuranceExtraction?.needsReview
+            ? "needs-review"
+            : "processed",
         url: secureUrl,
         publicId,
       });
     }
     files = uploaded;
+  } else if (submittedFiles.length) {
+    files = submittedFiles.map((file) => ({
+      id: `file-${new ObjectId().toString()}`,
+      name: file.name,
+      type: file.type,
+      source: "mobile-upload",
+      status:
+        (file.type === "insurance-front" || file.type === "insurance-back") &&
+        insuranceExtraction?.needsReview
+          ? "needs-review"
+          : "processed",
+    }));
   }
+
+  const insurance = mergeInsuranceProfile(demoInsurance, insuranceExtraction);
 
   const data: UploadResponse = {
     ...demoUploadResponse,
     uploadId,
     patientId,
-    insurance: demoInsurance,
+    insurance,
+    insuranceExtraction,
     biometrics: demoBiometrics,
     files,
     notes,
@@ -90,6 +135,8 @@ export async function processUploadIntake(body: UploadRequestBody): Promise<{
         healthComplete: body.healthComplete ?? true,
         healthSource: body.healthSource,
         notes: data.notes,
+        insurance: data.insurance,
+        insuranceExtraction: data.insuranceExtraction,
         files: data.files,
         readyForSummary: data.readyForSummary,
       });

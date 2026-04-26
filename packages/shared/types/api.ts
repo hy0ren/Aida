@@ -14,6 +14,25 @@ export interface InsuranceProfile {
   estimatedCopay: number;
 }
 
+export interface InsuranceCardExtraction {
+  source: 'gemini' | 'not-run';
+  carrier?: string;
+  plan?: string;
+  memberId?: string;
+  groupNumber?: string;
+  payerPhone?: string;
+  subscriberName?: string;
+  dependentName?: string;
+  rxBin?: string;
+  rxPcn?: string;
+  rxGroup?: string;
+  copayPrimaryCare?: number;
+  copaySpecialist?: number;
+  confidence: number;
+  needsReview: boolean;
+  reviewReason?: string;
+}
+
 export interface BiometricMetric {
   label: string;
   value: string;
@@ -26,7 +45,7 @@ export interface BiometricMetric {
 export interface UploadedFile {
   id: string;
   name: string;
-  type: 'insurance-front' | 'insurance-back' | 'biometric-export' | 'clinical-note';
+  type: 'insurance-front' | 'insurance-back' | 'biometric-export' | 'clinical-note' | 'health-export' | 'lab-report' | 'other';
   source: string;
   status: 'processed' | 'needs-review';
   /** When stored in Cloudinary or another CDN */
@@ -38,6 +57,7 @@ export interface UploadResponse {
   uploadId: string;
   patientId: string;
   insurance: InsuranceProfile;
+  insuranceExtraction?: InsuranceCardExtraction;
   biometrics: BiometricMetric[];
   files: UploadedFile[];
   notes: string;

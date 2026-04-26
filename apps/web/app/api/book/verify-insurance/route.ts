@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyInsuranceResponse, demoInsurance } from '../../_mock/aida-demo';
 import type { InsuranceVerificationResponse, InsuranceProfile } from '@aida/shared';
+import { collections, getDb, isMongoConfigured } from '@/lib/mongodb';
 
 const AGENTVERSE_BASE = "https://agentverse.ai/v1beta1/almanac/agents";
 
@@ -22,15 +23,69 @@ type AgentResponse = {
   [key: string]: unknown;
 };
 
+async function loadLatestUploadedInsurance(patientId?: string): Promise<Partial<InsuranceProfile> | undefined> {
+  if (!patientId?.trim() || !isMongoConfigured()) return undefined;
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const doc = await db.collection(collections.uploads).findOne(
+    { patientId },
+    {
+      sort: { createdAt: -1 },
+      projection: { _id: 0, insurance: 1 },
+    },
+  );
+  const insurance = doc?.insurance;
+  return insurance && typeof insurance === "object"
+    ? (insurance as Partial<InsuranceProfile>)
+    : undefined;
+}
+
+function resolveInsurance(
+  requestInsurance?: Partial<InsuranceProfile>,
+  storedInsurance?: Partial<InsuranceProfile>,
+): InsuranceProfile {
+  return {
+    carrier: requestInsurance?.carrier ?? storedInsurance?.carrier ?? demoInsurance.carrier,
+    plan: requestInsurance?.plan ?? storedInsurance?.plan ?? demoInsurance.plan,
+    memberId: requestInsurance?.memberId ?? storedInsurance?.memberId ?? demoInsurance.memberId,
+    groupNumber: requestInsurance?.groupNumber ?? storedInsurance?.groupNumber ?? demoInsurance.groupNumber,
+    payerPhone: requestInsurance?.payerPhone ?? storedInsurance?.payerPhone ?? demoInsurance.payerPhone,
+    network: requestInsurance?.network ?? storedInsurance?.network ?? demoInsurance.network,
+    estimatedCopay:
+      requestInsurance?.estimatedCopay ??
+      storedInsurance?.estimatedCopay ??
+      demoInsurance.estimatedCopay,
+  };
+}
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as VerifyInsuranceBody;
   const agentAddress = process.env.FETCHAI_INSURANCE_AGENT_ADDRESS;
   const apiKey = process.env.FETCHAI_API_KEY;
   const demoFallback = verifyInsuranceResponse(body.providerId);
+  let storedInsurance: Partial<InsuranceProfile> | undefined;
+  try {
+    storedInsurance = await loadLatestUploadedInsurance(body.patientId);
+  } catch (error) {
+    console.warn("[MongoDB] Could not load latest parsed insurance:", error);
+  }
+  const resolvedInsurance = resolveInsurance(body.insurance, storedInsurance);
 
   if (!agentAddress || !apiKey) {
-    console.warn("[Fetch.ai] Insurance agent credentials missing — returning demo verification.");
-    return NextResponse.json({ ok: true, data: demoFallback });
+    console.warn("[Fetch.ai] Insurance agent credentials missing — returning local insurance verification fallback.");
+    return NextResponse.json({
+      ok: true,
+      data: {
+        ...demoFallback,
+        patientId: body.patientId ?? demoFallback.patientId,
+        insurance: resolvedInsurance,
+        message:
+          storedInsurance || body.insurance
+            ? `${resolvedInsurance.carrier} ${resolvedInsurance.plan} was parsed from the intake card. Agent verification still needs Fetch.ai credentials.`
+            : demoFallback.message,
+      },
+    });
   }
 
   try {
@@ -41,10 +96,10 @@ export async function POST(req: Request) {
         provider_id: body.providerId,
         patient_id: body.patientId,
         insurance_details: {
-          carrier: body.insurance?.carrier ?? demoInsurance.carrier,
-          plan: body.insurance?.plan ?? demoInsurance.plan,
-          member_id: body.insurance?.memberId ?? demoInsurance.memberId,
-          group_number: body.insurance?.groupNumber ?? demoInsurance.groupNumber,
+          carrier: resolvedInsurance.carrier,
+          plan: resolvedInsurance.plan,
+          member_id: resolvedInsurance.memberId,
+          group_number: resolvedInsurance.groupNumber,
         },
       },
     };
@@ -67,7 +122,7 @@ export async function POST(req: Request) {
       console.warn("[Fetch.ai] Insurance agent returned", response.status, "— using demo verification.");
       return NextResponse.json({
         ok: true,
-        data: { ...demoFallback, agentStatus: "error", agentAddress },
+        data: { ...demoFallback, insurance: resolvedInsurance, agentStatus: "error", agentAddress },
       });
     }
 
@@ -86,15 +141,15 @@ export async function POST(req: Request) {
       providerId: body.providerId ?? demoFallback.providerId,
       insurance: hasAgentResult
         ? {
-            carrier: agentData!.carrier ?? demoInsurance.carrier,
-            plan: agentData!.plan ?? demoInsurance.plan,
-            memberId: agentData!.member_id ?? demoInsurance.memberId,
-            groupNumber: agentData!.group_number ?? demoInsurance.groupNumber,
-            payerPhone: demoInsurance.payerPhone,
-            network: agentData!.network_status ?? demoInsurance.network,
-            estimatedCopay: agentData!.estimated_copay ?? demoInsurance.estimatedCopay,
+            carrier: agentData!.carrier ?? resolvedInsurance.carrier,
+            plan: agentData!.plan ?? resolvedInsurance.plan,
+            memberId: agentData!.member_id ?? resolvedInsurance.memberId,
+            groupNumber: agentData!.group_number ?? resolvedInsurance.groupNumber,
+            payerPhone: resolvedInsurance.payerPhone,
+            network: agentData!.network_status ?? resolvedInsurance.network,
+            estimatedCopay: agentData!.estimated_copay ?? resolvedInsurance.estimatedCopay,
           }
-        : demoFallback.insurance,
+        : resolvedInsurance,
       eligible: hasAgentResult ? agentData!.eligible! : demoFallback.eligible,
       status: hasAgentResult
         ? (agentData!.eligible ? "verified" : "needs-review")
@@ -111,7 +166,7 @@ export async function POST(req: Request) {
     console.error("[Fetch.ai] Insurance agent error:", error);
     return NextResponse.json({
       ok: true,
-      data: { ...demoFallback, agentStatus: "fallback", agentAddress },
+      data: { ...demoFallback, insurance: resolvedInsurance, agentStatus: "fallback", agentAddress },
     });
   }
 }
