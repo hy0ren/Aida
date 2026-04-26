@@ -83,6 +83,9 @@ export async function generateBiometricSummary(
         },
         generationConfig: {
           maxOutputTokens: 1024,
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
         },
       }),
     },
