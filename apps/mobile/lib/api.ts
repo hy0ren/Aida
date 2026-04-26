@@ -205,6 +205,10 @@ export function listAppointments(patientId: string) {
   return apiGet<ListAppointmentsData>(`/appointments?${new URLSearchParams({ patientId }).toString()}`);
 }
 
+export function saveProviderNotes(body: { appointmentId: string; providerNotes: string }) {
+  return apiPut<{ ok: boolean }>('/appointments', body);
+}
+
 export function sendAppointmentConfirmation(body: {
   appointmentId?: string;
   patientId?: string;

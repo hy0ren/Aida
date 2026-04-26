@@ -40,7 +40,7 @@ export default function CallStatusScreen() {
       .catch((error) => {
         if (!mounted) return;
         setCallState("error");
-        setErrorMessage(error instanceof Error ? error.message : "Unable to start the mocked call.");
+        setErrorMessage(error instanceof Error ? error.message : "Call could not be initiated. Check your connection.");
       });
 
     return () => {
@@ -120,6 +120,22 @@ export default function CallStatusScreen() {
             ? errorMessage
             : `Speaking English to the clinic, updating you in ${language}.`}
         </Text>
+        {callState === "success" && session && (
+          <View
+            style={{
+              marginTop: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: session.liveCall ? `${theme.accent}30` : "rgba(255,255,255,0.08)",
+              alignSelf: "center",
+            }}
+          >
+            <Text style={{ color: session.liveCall ? "#eafff9" : "#a1a1aa", fontWeight: "900", fontSize: 12 }}>
+              {session.liveCall ? "LIVE ELEVENLABS CALL" : "DEMO CALL SESSION"}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
@@ -171,11 +187,11 @@ export default function CallStatusScreen() {
                   setCallState("success");
                 })
                 .catch((error) => {
-                  setCallState("error");
-                  setErrorMessage(error instanceof Error ? error.message : "Unable to start the mocked call.");
-                });
-            }}
-            tone={theme.accent}
+        setCallState("error");
+        setErrorMessage(error instanceof Error ? error.message : "Call could not be initiated. Check your connection.");
+      });
+    }}
+    tone={theme.accent}
           />
         )}
         {callState === "success" && stage === stages.length - 1 && (

@@ -56,6 +56,21 @@ export async function processCreateAppointment(
   return { data, source: "demo" };
 }
 
+export async function updateAppointmentNotes(
+  appointmentId: string,
+  providerNotes: string,
+): Promise<{ ok: boolean }> {
+  if (!isMongoConfigured()) return { ok: true };
+  const db = await getDb();
+  if (!db) return { ok: true };
+
+  await db.collection(collections.appointments).updateOne(
+    { appointmentId },
+    { $set: { providerNotes, updatedAt: new Date() } },
+  );
+  return { ok: true };
+}
+
 export async function listAppointmentsByPatientId(
   patientId: string
 ): Promise<{ data: ListAppointmentsData; source: "database" | "demo" }> {

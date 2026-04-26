@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   listAppointmentsByPatientId,
   processCreateAppointment,
+  updateAppointmentNotes,
   type AppointmentRequestBody,
 } from "@/lib/appointment-service";
 
@@ -41,6 +42,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     const error = err instanceof Error ? err.message : "Failed to create appointment";
+    return NextResponse.json({ ok: false, error }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = (await req.json()) as {
+      appointmentId?: string;
+      providerNotes?: string;
+    };
+    if (!body.appointmentId) {
+      return NextResponse.json(
+        { ok: false, error: "appointmentId is required" },
+        { status: 400 },
+      );
+    }
+    await updateAppointmentNotes(body.appointmentId, body.providerNotes ?? "");
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Failed to save notes";
     return NextResponse.json({ ok: false, error }, { status: 500 });
   }
 }

@@ -1,34 +1,68 @@
-import { useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
-import { demoData } from "@aida/shared";
-import { Card, Icon, Pill, Screen, colors, sampleSummary, useAidaTheme, PrimaryButton } from "../../components/aida";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
+import { demoData, type AppointmentResponse, type SummaryHistoryItem } from "@aida/shared";
+import { listAppointments, listSummaries, saveProviderNotes } from "../../lib/api";
+import {
+  Card,
+  Icon,
+  Pill,
+  Screen,
+  colors,
+  sampleSummary,
+  useAidaTheme,
+  PrimaryButton,
+} from "../../components/aida";
 
 const filters = ["All", "Needs review", "Confirmed", "Flagged"];
 
 export default function ProviderPatientsScreen() {
-  const { theme, patientProfile, language } = useAidaTheme();
+  const { theme, patientProfile, language, userId } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
-  const personalizedSummary = sampleSummary
-    .replace(/Elena Morales/g, patientName)
-    .replace(/Elena/g, patientProfile.firstName)
-    .replace(/Spanish/g, language);
+  const patientId = userId ?? demoData.patient.id;
+
+  const [realSummary, setRealSummary] = useState<SummaryHistoryItem | null>(null);
+  const [realAppts, setRealAppts] = useState<AppointmentResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([
+      listSummaries(patientId),
+      listAppointments(patientId),
+    ]).then(([sumResult, apptResult]) => {
+      if (!mounted) return;
+      if (sumResult.status === "fulfilled" && sumResult.value.items.length > 0) {
+        setRealSummary(sumResult.value.items[0]);
+      }
+      if (apptResult.status === "fulfilled") {
+        setRealAppts(apptResult.value.items);
+      }
+      setLoading(false);
+    });
+    return () => { mounted = false; };
+  }, [patientId]);
+
+  const displaySummary = realSummary?.summary
+    ?? sampleSummary
+      .replace(/Elena Morales/g, patientName)
+      .replace(/Elena/g, patientProfile.firstName)
+      .replace(/Spanish/g, language);
+
   const patients = useMemo(
     () =>
       demoData.providerIntake.patientRoster.map((patient, index) =>
         index === 0
-          ? {
-              ...patient,
-              name: patientName,
-              language,
-            }
+          ? { ...patient, name: patientName, language }
           : patient,
       ),
     [language, patientName],
   );
+
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [selected, setSelected] = useState(patients[0]);
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const filtered = useMemo(() => {
     return patients.filter((patient) => {
@@ -42,7 +76,30 @@ export default function ProviderPatientsScreen() {
         (filter === "Flagged" && patient.flagged);
       return matchesQuery && matchesFilter;
     });
-  }, [filter, query]);
+  }, [filter, patients, query]);
+
+  const selectedAppt = realAppts.find(
+    (a) => a.status === "confirmed" || a.status === "pending",
+  ) ?? realAppts[0];
+
+  async function handleSaveNotes() {
+    if (!selectedAppt?.appointmentId) {
+      Alert.alert("Saved", "Notes saved locally (no appointment to attach to).");
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveProviderNotes({
+        appointmentId: selectedAppt.appointmentId,
+        providerNotes: notes,
+      });
+      Alert.alert("Saved", "Clinical notes saved to patient record.");
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "Failed to save notes.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Screen title="Patient intake" subtitle="Search patients and review approved summaries.">
@@ -151,11 +208,33 @@ export default function ProviderPatientsScreen() {
             <Pill label={selected.specialty} icon="stethoscope" />
             <Pill label={selected.status} icon="clipboard-text-clock-outline" tone={colors.plum} />
             {selected.flagged && <Pill label="Vitals flagged" icon="heart-pulse" tone={colors.amber} />}
+            {realSummary?.source && (
+              <Pill
+                label={realSummary.source === "gemini" ? "Gemini summary" : "Demo summary"}
+                icon="brain"
+                tone={realSummary.source === "gemini" ? colors.green : colors.faint}
+              />
+            )}
           </View>
           <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900", marginTop: 18 }}>
             Approved summary
           </Text>
-          <Text style={{ color: theme.muted, lineHeight: 22, marginTop: 8 }}>{personalizedSummary}</Text>
+          {loading ? (
+            <ActivityIndicator color={theme.accent} style={{ marginTop: 12 }} />
+          ) : (
+            <Text style={{ color: theme.muted, lineHeight: 22, marginTop: 8 }}>{displaySummary}</Text>
+          )}
+
+          {selectedAppt && (
+            <View style={{ marginTop: 16, gap: 6 }}>
+              <Text style={{ color: theme.ink, fontSize: 14, fontWeight: "900" }}>Appointment</Text>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                <Pill label={selectedAppt.doctor} icon="doctor" tone={colors.plum} />
+                <Pill label={formatApptTime(selectedAppt.scheduledAt)} icon="calendar" />
+                <Pill label={selectedAppt.status} icon="check" tone={colors.green} />
+              </View>
+            </View>
+          )}
         </Card>
 
         <Card>
@@ -182,15 +261,25 @@ export default function ProviderPatientsScreen() {
             }}
           />
           <PrimaryButton
-            label="Save Notes"
+            label={saving ? "Saving..." : "Save Notes"}
             icon="content-save-outline"
-            onPress={() => {
-              // Simulates write back to MongoDB
-              alert("Notes saved to database");
-            }}
+            disabled={saving}
+            onPress={handleSaveNotes}
           />
         </Card>
       </View>
     </Screen>
   );
+}
+
+function formatApptTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
 }

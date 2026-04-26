@@ -1,5 +1,11 @@
-import { Text, View } from "react-native";
-import { demoData } from "@aida/shared";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import {
+  demoData,
+  type AppointmentResponse,
+  type SummaryHistoryItem,
+} from "@aida/shared";
+import { listAppointments, listSummaries } from "../../lib/api";
 import {
   Card,
   Icon,
@@ -16,6 +22,13 @@ import type { ComponentProps } from "react";
 type MetricTone = "attention" | "stable";
 type MetricIcon = ComponentProps<typeof Icon>["name"];
 
+const METRIC_ICON_MAP: Record<string, MetricIcon> = {
+  "resting-heart-rate": "heart-pulse",
+  "sleep-score": "sleep",
+  "heart-rate-variability": "chart-bell-curve",
+  steps: "shoe-print",
+};
+
 const todaysMetrics: {
   icon: MetricIcon;
   label: string;
@@ -25,16 +38,7 @@ const todaysMetrics: {
   tone: MetricTone;
   wide?: boolean;
 }[] = demoData.biometricMetrics.map((metric) => ({
-  icon:
-    metric.id === "resting-heart-rate"
-      ? "heart-pulse"
-      : metric.id === "sleep-score"
-        ? "sleep"
-        : metric.id === "heart-rate-variability"
-          ? "chart-bell-curve"
-          : metric.id === "steps"
-            ? "shoe-print"
-            : "lungs",
+  icon: METRIC_ICON_MAP[metric.id] ?? "lungs",
   label: metric.label,
   value: metric.value,
   unit: metric.unit,
@@ -44,7 +48,52 @@ const todaysMetrics: {
 }));
 
 export default function HomeScreen() {
-  const { theme, mode, language, patientProfile } = useAidaTheme();
+  const { theme, mode, language, userId, patientProfile } = useAidaTheme();
+  const patientId = userId ?? demoData.patient.id;
+
+  const [nextAppt, setNextAppt] = useState<AppointmentResponse | null>(null);
+  const [latestSummary, setLatestSummary] = useState<SummaryHistoryItem | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    Promise.allSettled([
+      listAppointments(patientId),
+      listSummaries(patientId),
+    ]).then(([apptResult, summaryResult]) => {
+      if (!mounted) return;
+      if (apptResult.status === "fulfilled" && apptResult.value.items.length > 0) {
+        const upcoming = apptResult.value.items.find(
+          (a) => a.status === "confirmed" || a.status === "pending",
+        );
+        setNextAppt(upcoming ?? apptResult.value.items[0]);
+      }
+      if (summaryResult.status === "fulfilled" && summaryResult.value.items.length > 0) {
+        setLatestSummary(summaryResult.value.items[0]);
+      }
+      setLoading(false);
+    });
+
+    return () => { mounted = false; };
+  }, [patientId]);
+
+  const headline = latestSummary
+    ? `${latestSummary.specialtyRecommendation} — ${latestSummary.urgency}`
+    : demoData.healthSummary.headline;
+  const detail = latestSummary?.summary?.slice(0, 120)
+    ? `${latestSummary.summary.slice(0, 120)}...`
+    : demoData.healthSummary.detail;
+  const syncLabel = latestSummary
+    ? formatRelative(latestSummary.createdAt)
+    : demoData.healthSummary.lastSyncLabel;
+
+  const apptDoctor = nextAppt?.doctor ?? demoData.providers[0].doctor;
+  const apptTime = nextAppt
+    ? formatAppointmentTime(nextAppt.scheduledAt)
+    : demoData.selectedAppointment.displayDateTime;
+  const apptStatus = nextAppt?.status ?? demoData.selectedAppointment.status;
+
   return (
     <Screen
       title="Biometrics"
@@ -58,25 +107,31 @@ export default function HomeScreen() {
               <Text style={{ color: "#b7cbc5", fontSize: 13, fontWeight: "800" }}>
                 Health status
               </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 28,
-                  fontWeight: "900",
-                  marginTop: 6,
-                  lineHeight: 33,
-                }}
-              >
-                {demoData.healthSummary.headline}
-              </Text>
-              <Text style={{ color: "#d9e6e2", fontSize: 14, lineHeight: 21, marginTop: 8 }}>
-                {demoData.healthSummary.detail}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#d7fff3" style={{ marginTop: 14 }} />
+              ) : (
+                <>
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontSize: 28,
+                      fontWeight: "900",
+                      marginTop: 6,
+                      lineHeight: 33,
+                    }}
+                  >
+                    {headline}
+                  </Text>
+                  <Text style={{ color: "#d9e6e2", fontSize: 14, lineHeight: 21, marginTop: 8 }}>
+                    {detail}
+                  </Text>
+                </>
+              )}
             </View>
             <Icon name="heart-pulse" size={44} color="#d7fff3" />
           </View>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-            <Pill label={`Last sync: ${demoData.healthSummary.lastSyncLabel}`} icon="sync" tone="#d7fff3" />
+            <Pill label={`Last sync: ${syncLabel}`} icon="sync" tone="#d7fff3" />
             <Pill label="On-device" icon="shield-check" tone="#d7fff3" />
           </View>
         </Card>
@@ -105,13 +160,11 @@ export default function HomeScreen() {
                 Next appointment
               </Text>
               <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>
-                {demoData.providers[0].doctor}
+                {apptDoctor}
               </Text>
-              <Text style={{ color: theme.muted, marginTop: 4 }}>
-                {demoData.selectedAppointment.displayDateTime}
-              </Text>
+              <Text style={{ color: theme.muted, marginTop: 4 }}>{apptTime}</Text>
             </View>
-            <Pill label={demoData.selectedAppointment.status} icon="check" />
+            <Pill label={apptStatus} icon="check" />
           </View>
         </Card>
 
@@ -119,13 +172,17 @@ export default function HomeScreen() {
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={[sectionTitle, { color: theme.ink, marginBottom: 4 }]}>
-                Today’s metrics
+                Today's metrics
               </Text>
               <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
                 Most recent readings from your wearable and phone.
               </Text>
             </View>
-            <Pill label="5 updated" icon="sync" tone={mode === "dark" ? "#d7fff3" : colors.green} />
+            <Pill
+              label={`${todaysMetrics.length} updated`}
+              icon="sync"
+              tone={mode === "dark" ? "#d7fff3" : colors.green}
+            />
           </View>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
@@ -217,6 +274,30 @@ function TodayMetricCard({
       </View>
     </Card>
   );
+}
+
+function formatAppointmentTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
+}
+
+function formatRelative(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "recently";
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.round(diffMs / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 const sectionTitle = {

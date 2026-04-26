@@ -38,6 +38,12 @@ export default function UploadScreen() {
     memberId: demoData.insurance.memberId,
     groupNumber: demoData.insurance.groupNumber,
   });
+  const updateDetectedInsurance = (
+    key: "carrier" | "plan" | "memberId" | "groupNumber",
+    value: string,
+  ) => {
+    setDetectedInsurance((current) => ({ ...current, [key]: value }));
+  };
 
   // Health data state
   const [healthMode, setHealthMode] = useState<HealthMode>("file");
@@ -94,12 +100,12 @@ export default function UploadScreen() {
 
       // Update detected insurance from the response
       if (response.insurance) {
-        setDetectedInsurance({
-          carrier: response.insurance.carrier ?? detectedInsurance.carrier,
-          plan: response.insurance.plan ?? detectedInsurance.plan,
-          memberId: response.insurance.memberId ?? detectedInsurance.memberId,
-          groupNumber: response.insurance.groupNumber ?? detectedInsurance.groupNumber,
-        });
+        setDetectedInsurance((current) => ({
+          carrier: response.insurance.carrier ?? current.carrier,
+          plan: response.insurance.plan ?? current.plan,
+          memberId: response.insurance.memberId ?? current.memberId,
+          groupNumber: response.insurance.groupNumber ?? current.groupNumber,
+        }));
       }
 
       setUploadState("success");
@@ -187,10 +193,34 @@ export default function UploadScreen() {
               <Pill label={insuranceComplete ? "Verified format" : "Draft"} icon="text-recognition" />
             </View>
             <View style={{ gap: 10, marginTop: 12 }}>
-              <Field label="Carrier" value={detectedInsurance.carrier} />
-              <Field label="Plan" value={detectedInsurance.plan} />
-              <Field label="Member ID" value={detectedInsurance.memberId} />
-              <Field label="Group number" value={detectedInsurance.groupNumber} />
+              <Field
+                label="Carrier"
+                value={detectedInsurance.carrier}
+                onChangeText={(value) => updateDetectedInsurance("carrier", value)}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+              <Field
+                label="Plan"
+                value={detectedInsurance.plan}
+                onChangeText={(value) => updateDetectedInsurance("plan", value)}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+              <Field
+                label="Member ID"
+                value={detectedInsurance.memberId}
+                onChangeText={(value) => updateDetectedInsurance("memberId", value)}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <Field
+                label="Group number"
+                value={detectedInsurance.groupNumber}
+                onChangeText={(value) => updateDetectedInsurance("groupNumber", value)}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
             </View>
           </View>
         </Card>

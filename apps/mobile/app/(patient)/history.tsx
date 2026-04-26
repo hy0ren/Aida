@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-import { demoData, type SummaryHistoryItem } from "@aida/shared";
-import { listSummaries } from "../../lib/api";
+import {
+  demoData,
+  type AppointmentResponse,
+  type SummaryHistoryItem,
+} from "@aida/shared";
+import { listAppointments, listSummaries } from "../../lib/api";
 import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function HistoryScreen() {
   const { theme, userId, language, patientProfile } = useAidaTheme();
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
+  const [apptState, setApptState] = useState<"loading" | "success" | "error">("loading");
   const [summaries, setSummaries] = useState<SummaryHistoryItem[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const patientId = userId ?? demoData.patient.id;
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
@@ -40,7 +46,6 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     let mounted = true;
-    setSummaryState("loading");
 
     listSummaries(patientId)
       .then((response) => {
@@ -55,10 +60,21 @@ export default function HistoryScreen() {
         setErrorMessage(error instanceof Error ? error.message : "Unable to load summary history.");
       });
 
-    return () => {
-      mounted = false;
-    };
+    listAppointments(patientId)
+      .then((response) => {
+        if (!mounted) return;
+        setAppointments(response.items);
+        setApptState("success");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setApptState("error");
+      });
+
+    return () => { mounted = false; };
   }, [fallbackSummaries, patientId]);
+
+  const hasRealAppointments = apptState === "success" && appointments.length > 0;
 
   return (
     <Screen
@@ -66,24 +82,48 @@ export default function HistoryScreen() {
       subtitle="Appointments, summaries, and confirmation receipts stay organized here."
     >
       <View style={{ gap: 14, paddingBottom: 86 }}>
-        <Card>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                {demoData.providers[0].name}
-              </Text>
-              <Text style={{ color: theme.muted, marginTop: 4 }}>
-                {demoData.selectedAppointment.displayDateTime}
-              </Text>
+        {/* Appointments section */}
+        {hasRealAppointments ? (
+          appointments.map((appt) => (
+            <Card key={appt.appointmentId}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
+                    {appt.clinicName}
+                  </Text>
+                  <Text style={{ color: theme.muted, marginTop: 4 }}>
+                    {formatAppointmentTime(appt.scheduledAt)}
+                  </Text>
+                </View>
+                <Pill label={appt.status} icon="calendar-clock" />
+              </View>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+                <Pill label={appt.doctor} icon="doctor" tone={colors.plum} />
+                <Pill label={appt.specialty} icon="stethoscope" tone={colors.amber} />
+              </View>
+            </Card>
+          ))
+        ) : (
+          <Card>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
+                  {demoData.providers[0].name}
+                </Text>
+                <Text style={{ color: theme.muted, marginTop: 4 }}>
+                  {demoData.selectedAppointment.displayDateTime}
+                </Text>
+              </View>
+              <Pill label={demoData.appointmentHistory[0].status} icon="calendar-clock" />
             </View>
-            <Pill label={demoData.appointmentHistory[0].status} icon="calendar-clock" />
-          </View>
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            <Pill label={demoData.providers[0].doctor} icon="doctor" tone={colors.plum} />
-            <Pill label={demoData.selectedAppointment.visitType} icon="stethoscope" tone={colors.amber} />
-          </View>
-        </Card>
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+              <Pill label={demoData.providers[0].doctor} icon="doctor" tone={colors.plum} />
+              <Pill label={demoData.selectedAppointment.visitType} icon="stethoscope" tone={colors.amber} />
+            </View>
+          </Card>
+        )}
 
+        {/* Summaries section */}
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <Icon name="brain" size={23} color={theme.accent} />
@@ -116,12 +156,13 @@ export default function HistoryScreen() {
           ))}
         </Card>
 
-        <Card>
-          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
-            Past visits
-          </Text>
-          {demoData.appointmentHistory.slice(1).map(
-            (item, index) => (
+        {/* Past visits (demo fallback when no real appointments) */}
+        {!hasRealAppointments && (
+          <Card>
+            <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
+              Past visits
+            </Text>
+            {demoData.appointmentHistory.slice(1).map((item, index) => (
               <View
                 key={item.id}
                 style={{
@@ -141,9 +182,9 @@ export default function HistoryScreen() {
                 </View>
                 <Icon name="chevron-right" color={theme.faint} />
               </View>
-            ),
-          )}
-        </Card>
+            ))}
+          </Card>
+        )}
       </View>
     </Screen>
   );
@@ -199,4 +240,16 @@ function formatSummaryDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function formatAppointmentTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
 }

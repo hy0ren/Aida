@@ -1,33 +1,77 @@
-import { Text, View } from "react-native";
-import { demoData } from "@aida/shared";
-import { Card, Icon, Pill, PrimaryButton, Screen, colors, useAidaTheme } from "../../components/aida";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import { demoData, type AppointmentResponse } from "@aida/shared";
+import { listAppointments } from "../../lib/api";
+import {
+  Card,
+  Icon,
+  Pill,
+  PrimaryButton,
+  Screen,
+  colors,
+  useAidaTheme,
+} from "../../components/aida";
 
 export default function ProviderDashboardScreen() {
-  const { theme, language, patientProfile } = useAidaTheme();
+  const { theme, language, patientProfile, userId } = useAidaTheme();
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
+  const patientId = userId ?? demoData.patient.id;
+
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    listAppointments(patientId)
+      .then((response) => {
+        if (!mounted) return;
+        setAppointments(response.items);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [patientId]);
+
+  const hasRealAppts = appointments.length > 0;
+  const nextAppt = appointments.find((a) => a.status === "confirmed" || a.status === "pending");
+  const visitsToday = hasRealAppts ? appointments.length : demoData.providerIntake.visitsToday;
+  const aiBooked = hasRealAppts
+    ? appointments.filter((a) => a.status === "confirmed").length
+    : demoData.providerIntake.aiBookedNeedingReview;
+
   return (
     <Screen title="Today" subtitle={`${demoData.providers[0].name} appointment queue.`}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card style={{ backgroundColor: theme.accent }}>
-          <Text style={{ color: "#fff", fontSize: 36, fontFamily: "Georgia", fontWeight: "700" }}>
-            {demoData.providerIntake.visitsToday}
-          </Text>
-          <Text style={{ color: "#fff", fontWeight: "900", marginTop: 4 }}>
-            visits today
-          </Text>
-          <Text style={{ color: "rgba(255,255,255,0.82)", lineHeight: 20, marginTop: 8 }}>
-            {demoData.providerIntake.aiBookedNeedingReview} new AI-booked appointment needs intake review.
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
+          ) : (
+            <>
+              <Text style={{ color: "#fff", fontSize: 36, fontFamily: "Georgia", fontWeight: "700" }}>
+                {visitsToday}
+              </Text>
+              <Text style={{ color: "#fff", fontWeight: "900", marginTop: 4 }}>
+                visits today
+              </Text>
+              <Text style={{ color: "rgba(255,255,255,0.82)", lineHeight: 20, marginTop: 8 }}>
+                {aiBooked} AI-booked appointment{aiBooked === 1 ? "" : "s"} need{aiBooked === 1 ? "s" : ""} intake review.
+              </Text>
+            </>
+          )}
         </Card>
 
         <Card>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                {patientName}
+                {nextAppt?.doctor ? `${patientName} with ${nextAppt.doctor}` : patientName}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 4 }}>
-                {demoData.selectedAppointment.timeLabel} - {demoData.selectedAppointment.visitType}
+                {nextAppt
+                  ? `${formatApptTime(nextAppt.scheduledAt)} - ${nextAppt.specialty}`
+                  : `${demoData.selectedAppointment.timeLabel} - ${demoData.selectedAppointment.visitType}`}
               </Text>
             </View>
             <Pill label="AI booked" icon="creation" />
@@ -46,9 +90,26 @@ export default function ProviderDashboardScreen() {
           <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 12 }}>
             Pending confirmations
           </Text>
-          {demoData.providerIntake.pendingConfirmations.map((confirmation) => (
-            <ProviderRow key={confirmation.name} name={confirmation.name} detail={confirmation.detail} />
-          ))}
+          {hasRealAppts ? (
+            appointments
+              .filter((a) => a.status === "pending")
+              .map((appt) => (
+                <ProviderRow
+                  key={appt.appointmentId}
+                  name={appt.doctor}
+                  detail={`${formatApptTime(appt.scheduledAt)} - ${appt.specialty}`}
+                />
+              ))
+          ) : (
+            demoData.providerIntake.pendingConfirmations.map((confirmation) => (
+              <ProviderRow key={confirmation.name} name={confirmation.name} detail={confirmation.detail} />
+            ))
+          )}
+          {hasRealAppts && appointments.filter((a) => a.status === "pending").length === 0 && (
+            <Text style={{ color: theme.muted, fontWeight: "700" }}>
+              All appointments confirmed.
+            </Text>
+          )}
         </Card>
       </View>
     </Screen>
@@ -67,4 +128,13 @@ function ProviderRow({ name, detail }: { name: string; detail: string }) {
       <Icon name="chevron-right" color={theme.faint} />
     </View>
   );
+}
+
+function formatApptTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
 }
