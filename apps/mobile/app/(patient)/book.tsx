@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { demoData, type InsuranceVerificationResponse, type ProviderOption } from "@aida/shared";
-import { findProviders, verifyInsurance } from "../../lib/api";
+import {
+  demoData,
+  type AppointmentResponse,
+  type InsuranceVerificationResponse,
+  type ProviderOption,
+} from "@aida/shared";
+import { AppointmentDetailSheet } from "../../components/AppointmentDetailSheet";
+import { findProviders, listAppointments, verifyInsurance } from "../../lib/api";
+import { byScheduledAtAsc, isUpcomingBookSlot, matchesAppointmentSearch } from "../../lib/appointment-filters";
+import { buildDemoActiveAppointment } from "../../lib/demo-appointment";
 import {
   Card,
+  Field,
   Icon,
   Pill,
   PrimaryButton,
@@ -21,7 +31,49 @@ export default function BookScreen() {
   const [insurance, setInsurance] = useState<InsuranceVerificationResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const { theme, userId, language, t } = useAidaTheme();
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [apptState, setApptState] = useState<"loading" | "success">("loading");
+  const [apptSearch, setApptSearch] = useState("");
+  const [sheetAppt, setSheetAppt] = useState<AppointmentResponse | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const selectedProvider = providers[selected];
+  const patientId = userId ?? demoData.patient.id;
+  const demoUpcoming = useMemo(() => buildDemoActiveAppointment(patientId), [patientId]);
+
+  const loadAppointments = useCallback(() => {
+    setApptState("loading");
+    listAppointments(patientId)
+      .then((r) => {
+        setAppointments(r.items);
+        setApptState("success");
+      })
+      .catch(() => {
+        setAppointments([]);
+        setApptState("success");
+      });
+  }, [patientId]);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAppointments();
+    }, [loadAppointments]),
+  );
+
+  const hasRealAppointments = appointments.length > 0;
+  const upcomingFromApi = useMemo(() => {
+    return appointments
+      .filter(isUpcomingBookSlot)
+      .filter((a) => matchesAppointmentSearch(a, apptSearch))
+      .sort(byScheduledAtAsc);
+  }, [appointments, apptSearch]);
+
+  const showDemoUpcoming = apptState === "success" && !hasRealAppointments;
+  const showDemoRow =
+    showDemoUpcoming && isUpcomingBookSlot(demoUpcoming) && matchesAppointmentSearch(demoUpcoming, apptSearch);
 
   useEffect(() => {
     let mounted = true;
@@ -82,11 +134,103 @@ export default function BookScreen() {
   }, [selectedProvider, userId]);
 
   return (
+    <>
     <Screen
       title={t("schedule")}
       subtitle={t("scheduleSubtitle")}
     >
       <View style={{ gap: 16, paddingBottom: 86 }}>
+        <Card>
+          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 4 }}>
+            {t("upcomingAppointmentsSection")}
+          </Text>
+          <Text style={{ color: theme.muted, lineHeight: 20, marginBottom: 10 }}>
+            {t("upcomingAppointmentsBookHelp")}
+          </Text>
+          {apptState === "loading" ? <ActivityIndicator color={theme.accent} style={{ marginVertical: 8 }} /> : null}
+          {(hasRealAppointments || showDemoUpcoming) && (
+            <Field
+              label={t("searchAppointments")}
+              value={apptSearch}
+              onChangeText={setApptSearch}
+              placeholder={t("searchAppointments")}
+            />
+          )}
+          {hasRealAppointments && upcomingFromApi.length === 0 && apptSearch.trim() ? (
+            <Text style={{ color: theme.muted, marginTop: 8 }}>{t("noAppointmentsMatch")}</Text>
+          ) : hasRealAppointments && appointments.filter(isUpcomingBookSlot).length === 0 ? (
+            <Text style={{ color: theme.muted, marginTop: 8 }}>{t("noUpcomingAppointments")}</Text>
+          ) : null}
+          {upcomingFromApi.map((appt) => (
+            <Pressable
+              key={appt.appointmentId}
+              onPress={() => {
+                setSheetAppt(appt);
+                setSheetOpen(true);
+              }}
+              style={{ marginTop: 10 }}
+            >
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.line,
+                  borderRadius: 16,
+                  padding: 14,
+                  backgroundColor: theme.card,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>{appt.clinicName}</Text>
+                    <Text style={{ color: theme.muted, marginTop: 4 }}>{formatUpcomingTime(appt.scheduledAt)}</Text>
+                  </View>
+                  <Pill label={appt.status} icon="calendar-clock" />
+                </View>
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  <Pill label={appt.doctor} icon="doctor" tone={colors.plum} />
+                  <Pill label={appt.specialty} icon="stethoscope" tone={colors.amber} />
+                </View>
+                <Text style={{ color: theme.muted, fontSize: 12, marginTop: 8 }}>{t("tapForDetails")}</Text>
+              </View>
+            </Pressable>
+          ))}
+          {showDemoRow && (
+            <Pressable
+              onPress={() => {
+                setSheetAppt(demoUpcoming);
+                setSheetOpen(true);
+              }}
+              style={{ marginTop: 10 }}
+            >
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.line,
+                  borderRadius: 16,
+                  padding: 14,
+                  backgroundColor: theme.card,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.ink, fontSize: 16, fontWeight: "900" }}>{demoData.providers[0].name}</Text>
+                    <Text style={{ color: theme.muted, marginTop: 4 }}>{demoData.selectedAppointment.displayDateTime}</Text>
+                  </View>
+                  <Pill label="confirmed" icon="calendar-clock" />
+                </View>
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  <Pill label={demoData.providers[0].doctor} icon="doctor" tone={colors.plum} />
+                  <Pill label={demoData.selectedAppointment.visitType} icon="stethoscope" tone={colors.amber} />
+                </View>
+                <Text style={{ color: theme.muted, fontSize: 12, marginTop: 8 }}>{t("tapForDetails")}</Text>
+              </View>
+            </Pressable>
+          )}
+          {showDemoUpcoming && !showDemoRow && apptSearch.trim() ? (
+            <Text style={{ color: theme.muted, marginTop: 8 }}>{t("noAppointmentsMatch")}</Text>
+          ) : null}
+        </Card>
+
         <Card style={{ backgroundColor: theme.surface }}>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <Icon name="alert-circle-outline" size={24} color={colors.amber} />
@@ -190,7 +334,33 @@ export default function BookScreen() {
         />
       </View>
     </Screen>
+    <AppointmentDetailSheet
+      visible={sheetOpen}
+      onClose={() => {
+        setSheetOpen(false);
+        setSheetAppt(null);
+      }}
+      appointment={sheetAppt}
+      patientId={patientId}
+      allowCancel={
+        !showDemoUpcoming || (sheetAppt != null && sheetAppt.appointmentId !== demoUpcoming.appointmentId)
+      }
+      onCancelled={loadAppointments}
+    />
+    </>
   );
+}
+
+function formatUpcomingTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
 }
 
 function ApiStatus({

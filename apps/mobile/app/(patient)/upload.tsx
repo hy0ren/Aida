@@ -1,8 +1,18 @@
 import { useRouter } from "expo-router";
 import { demoData } from "@aida/shared";
-import { useMemo, useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import { readAsStringAsync, EncodingType } from "expo-file-system/legacy";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { uploadPatientIntake } from "../../lib/api";
+import type { I18nKey } from "../../lib/i18n";
+import {
+  DEVICE_SYNC_SOURCES,
+  formatIngestedBytes,
+  loadSyncedHealth,
+  saveSyncedFromSource,
+  type HealthSyncRunStats,
+} from "../../lib/synced-health-data";
 import {
   Card,
   Field,
@@ -15,17 +25,24 @@ import {
   useAidaTheme,
 } from "../../components/aida";
 import { GlassScanner, type CapturedCard } from "../../components/GlassScanner";
+import { SyncConfirmationSheet } from "../../components/SyncConfirmationSheet";
 
-type HealthMode = "file" | "manual";
-type HealthSource = "Apple Health" | "Garmin" | "Oura" | "Whoop" | "CSV/PDF";
+type DeviceSourceId = (typeof DEVICE_SYNC_SOURCES)[number]["id"];
+type HealthSourceId = DeviceSourceId | "manual";
 type ApiState = "idle" | "loading" | "success" | "error";
 
-const healthSources: HealthSource[] = ["Apple Health", "Garmin", "Oura", "Whoop", "CSV/PDF"];
-const intakeNotes = demoData.healthSummary.notesForAida;
+const CHIP_LABEL: Record<DeviceSourceId, string> = {
+  apple: "Apple Health",
+  garmin: "Garmin",
+  oura: "Oura",
+  whoop: "Whoop",
+};
+
+const ALL_HEALTH_SOURCE_IDS: HealthSourceId[] = [...DEVICE_SYNC_SOURCES.map((s) => s.id), "manual"];
 
 export default function UploadScreen() {
   const router = useRouter();
-  const { theme, mode, userId, t } = useAidaTheme();
+  const { theme, userId, t } = useAidaTheme();
 
   // Insurance card state
   const [frontCard, setFrontCard] = useState<CapturedCard | null>(null);
@@ -45,19 +62,60 @@ export default function UploadScreen() {
     setDetectedInsurance((current) => ({ ...current, [key]: value }));
   };
 
-  // Health data state
-  const [healthMode, setHealthMode] = useState<HealthMode>("file");
-  const [healthSource, setHealthSource] = useState<HealthSource>("Apple Health");
-  const [healthUploaded, setHealthUploaded] = useState(true);
+  const [healthSource, setHealthSource] = useState("Apple Health sync");
+  const [deviceSynced, setDeviceSynced] = useState(false);
+  const [lastDeviceSyncStats, setLastDeviceSyncStats] = useState<HealthSyncRunStats | null>(null);
+  const [selectedSourceId, setSelectedSourceId] = useState<HealthSourceId>("apple");
+  const [deviceSyncing, setDeviceSyncing] = useState(false);
+  const [syncSheet, setSyncSheet] = useState<{
+    open: boolean;
+    source: string;
+    stats: HealthSyncRunStats | null;
+  }>({ open: false, source: "", stats: null });
   const [manualEntry, setManualEntry] = useState(false);
+  const [intakeNotes, setIntakeNotes] = useState("");
+  const [healthFilePickerBusy, setHealthFilePickerBusy] = useState(false);
+  const [healthFiles, setHealthFiles] = useState<
+    { name: string; type: "health-export" | "lab-report" | "other"; data: string }[]
+  >([]);
+  const [manualFields, setManualFields] = useState({
+    restingHr: "",
+    hrv: "",
+    sleep: "",
+    bloodPressure: "",
+    symptoms: "",
+  });
+
+  useEffect(() => {
+    loadSyncedHealth().then((saved) => {
+      if (!saved) return;
+      if (saved.lastSyncStats) {
+        setLastDeviceSyncStats(saved.lastSyncStats);
+      }
+      if (saved.metrics.length) {
+        setDeviceSynced(true);
+        setHealthSource(saved.lastSourceLabel);
+        if (
+          saved.lastSourceId === "apple" ||
+          saved.lastSourceId === "garmin" ||
+          saved.lastSourceId === "oura" ||
+          saved.lastSourceId === "whoop"
+        ) {
+          setSelectedSourceId(saved.lastSourceId as HealthSourceId);
+        }
+      }
+    });
+  }, []);
 
   // Upload state
   const [uploadState, setUploadState] = useState<ApiState>("idle");
   const [uploadMessage, setUploadMessage] = useState(t("generateSummary"));
 
   const insuranceComplete = Boolean(frontCard && backCard);
-  const healthComplete = healthUploaded || manualEntry;
-  const canGenerate = insuranceComplete && healthComplete;
+  const hasHealthFileUpload = healthFiles.length > 0;
+  const healthComplete = deviceSynced || manualEntry || hasHealthFileUpload;
+  const canGenerate = insuranceComplete;
+  const isManualSource = selectedSourceId === "manual";
 
   // ── Upload handler ─────────────────────────────────────────
   const handleUpload = async () => {
@@ -87,14 +145,25 @@ export default function UploadScreen() {
         data: `data:image/jpeg;base64,${backCard.base64}`,
       });
     }
+    for (const h of healthFiles) {
+      files.push({ name: h.name, type: h.type, data: h.data });
+    }
+
+    const manualBlock = buildManualVitalsBlock(manualFields);
+    const notesCombined = [intakeNotes.trim(), manualBlock].filter(Boolean).join("\n\n");
 
     try {
       const response = await uploadPatientIntake({
         patientId: userId,
         insuranceComplete,
         healthComplete,
-        healthSource,
-        notes: intakeNotes,
+        healthSource: formatHealthSourceLine(t, {
+          deviceSynced,
+          lastSyncLabel: healthSource,
+          manualEntry,
+          healthFileCount: healthFiles.length,
+        }),
+        notes: notesCombined,
         files: files.length > 0 ? files : undefined,
       });
 
@@ -128,7 +197,9 @@ export default function UploadScreen() {
       },
       {
         label: t("healthData"),
-        value: healthComplete ? t("readyToSummarize") : t("uploadOrManual"),
+        value: healthComplete
+          ? t("readyToSummarize")
+          : t("healthDataOptionalForSummary"),
         done: healthComplete,
       },
       {
@@ -140,7 +211,60 @@ export default function UploadScreen() {
     [healthComplete, insuranceComplete, t],
   );
 
+  const runDeviceSync = async () => {
+    if (deviceSyncing || isManualSource) return;
+    setDeviceSyncing(true);
+    try {
+      const src = DEVICE_SYNC_SOURCES.find((s) => s.id === selectedSourceId) ?? DEVICE_SYNC_SOURCES[0]!;
+      const s = await saveSyncedFromSource(src.id, src.label);
+      setHealthSource(s.lastSourceLabel);
+      setDeviceSynced(true);
+      setLastDeviceSyncStats(s.lastSyncStats ?? null);
+      setSyncSheet({ open: true, source: s.lastSourceLabel, stats: s.lastSyncStats ?? null });
+    } finally {
+      setDeviceSyncing(false);
+    }
+  };
+
+  const addHealthFiles = async () => {
+    if (healthFilePickerBusy) return;
+    setHealthFilePickerBusy(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+        multiple: true,
+      });
+      if (result.canceled) return;
+      const next: { name: string; type: "health-export" | "lab-report" | "other"; data: string }[] = [];
+      for (const asset of result.assets) {
+        const b64 = await readAsStringAsync(asset.uri, { encoding: EncodingType.Base64 });
+        const mime = asset.mimeType ?? "application/octet-stream";
+        const dataUrl = `data:${mime};base64,${b64}`;
+        const type = classifyHealthFileType(mime, asset.name);
+        next.push({ name: asset.name || "health-file", type, data: dataUrl });
+      }
+      if (next.length) {
+        setHealthFiles((f) => [...f, ...next]);
+      }
+    } catch (e) {
+      console.warn("Health file pick", e);
+    } finally {
+      setHealthFilePickerBusy(false);
+    }
+  };
+
+  const saveManualVitals = () => {
+    const has = Object.values(manualFields).some((v) => v.trim().length > 0);
+    if (has) {
+      setManualEntry(true);
+    } else {
+      setManualEntry(false);
+    }
+  };
+
   return (
+    <>
     <Screen
       title={t("upload")}
       subtitle={t("uploadSubtitle")}
@@ -159,10 +283,176 @@ export default function UploadScreen() {
             </View>
           </View>
           <View style={styles.progressRow}>
+            <ProgressStep label={t("healthData")} active done={healthComplete} />
             <ProgressStep label={t("insurance")} active done={insuranceComplete} />
-            <ProgressStep label={t("healthData")} active={insuranceComplete} done={healthComplete} />
-            <ProgressStep label={t("reviewStep")} active={canGenerate} done={canGenerate} />
+            <ProgressStep label={t("reviewStep")} active={insuranceComplete} done={canGenerate} />
           </View>
+        </Card>
+
+        <Card>
+          <SectionHeader
+            icon="heart-pulse"
+            title={t("healthData")}
+            detail={t("uploadHealthChipsHelp")}
+            complete={healthComplete}
+            incompletePill="optional"
+          />
+          <View style={styles.chipRow}>
+            {ALL_HEALTH_SOURCE_IDS.map((id) => {
+              const selected = selectedSourceId === id;
+              const label =
+                id === "manual" ? t("manualEntryShort") : CHIP_LABEL[id as DeviceSourceId];
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => setSelectedSourceId(id)}
+                  style={[
+                    styles.chip,
+                    {
+                      borderColor: selected ? theme.accent : theme.line,
+                      backgroundColor: selected ? `${theme.accent}14` : theme.card,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: selected ? theme.accent : theme.ink,
+                      fontWeight: "800",
+                      fontSize: 13,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {!isManualSource && (
+            <>
+              <Text style={[styles.subsectionLabel, { color: theme.muted, marginTop: 4 }]}>
+                {t("deviceSync")}
+              </Text>
+              <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 18, marginBottom: 10 }}>
+                {t("deviceSyncShort")}
+              </Text>
+              <View style={{ marginTop: 4 }}>
+                <PrimaryButton
+                  onPress={runDeviceSync}
+                  icon="sync"
+                  label={t("syncNow")}
+                  disabled={deviceSyncing}
+                />
+              </View>
+              {deviceSyncing && (
+                <ActivityIndicator color={theme.accent} style={{ alignSelf: "center", marginTop: 6 }} />
+              )}
+              {lastDeviceSyncStats && deviceSynced && (
+                <View
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 14,
+                    backgroundColor: theme.card,
+                    borderWidth: 1,
+                    borderColor: theme.line,
+                    gap: 4,
+                  }}
+                >
+                  <Text style={{ color: theme.ink, fontSize: 13, fontWeight: "900" }}>{t("lastSyncIngest")}</Text>
+                  <Text style={{ color: theme.ink, fontSize: 13, lineHeight: 19 }}>
+                    {t("syncStatsSleepEvents", { n: lastDeviceSyncStats.sleepEvents })}
+                  </Text>
+                  <Text style={{ color: theme.ink, fontSize: 13, lineHeight: 19 }}>
+                    {t("syncStatsTotalEvents", { n: lastDeviceSyncStats.totalEvents.toLocaleString() })}
+                  </Text>
+                  <Text style={{ color: theme.ink, fontSize: 13, lineHeight: 19 }}>
+                    {t("syncStatsDataIngested", { size: formatIngestedBytes(lastDeviceSyncStats.bytesIn) })}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {isManualSource && (
+            <View style={{ marginTop: 4, gap: 12 }}>
+              <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 18 }}>
+                {t("csvPdfXml")}
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label={t("restingHr")}
+                    value={manualFields.restingHr}
+                    onChangeText={(restingHr) => setManualFields((m) => ({ ...m, restingHr }))}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label={t("hrv")}
+                    value={manualFields.hrv}
+                    onChangeText={(hrv) => setManualFields((m) => ({ ...m, hrv }))}
+                  />
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label={t("sleep")}
+                    value={manualFields.sleep}
+                    onChangeText={(sleep) => setManualFields((m) => ({ ...m, sleep }))}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label={t("bloodPressure")}
+                    value={manualFields.bloodPressure}
+                    onChangeText={(bloodPressure) => setManualFields((m) => ({ ...m, bloodPressure }))}
+                  />
+                </View>
+              </View>
+              <Field
+                label={t("symptomsMeasurements")}
+                multiline
+                value={manualFields.symptoms}
+                onChangeText={(symptoms) => setManualFields((m) => ({ ...m, symptoms }))}
+              />
+              <SecondaryButton
+                icon={manualEntry ? "check" : "content-save"}
+                label={manualEntry ? t("manualDataSaved") : t("saveManualData")}
+                onPress={saveManualVitals}
+              />
+              <SecondaryButton
+                icon="file-plus-outline"
+                label={healthFilePickerBusy ? t("uploading") : t("addHealthFile")}
+                onPress={addHealthFiles}
+                disabled={healthFilePickerBusy}
+              />
+              {healthFiles.length > 0 && (
+                <View style={{ gap: 6 }}>
+                  {healthFiles.map((f, i) => (
+                    <View
+                      key={`${f.name}-${i}`}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                    >
+                      <Icon name="paperclip" size={18} color={theme.muted} />
+                      <Text style={{ color: theme.ink, flex: 1, fontSize: 13, fontWeight: "700" }} numberOfLines={1}>
+                        {f.name}
+                      </Text>
+                      <Pressable
+                        onPress={() => setHealthFiles((list) => list.filter((_, j) => j !== i))}
+                        hitSlop={8}
+                      >
+                        <Icon name="close-circle" size={20} color={theme.faint} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
         </Card>
 
         <Card>
@@ -227,107 +517,16 @@ export default function UploadScreen() {
 
         <Card>
           <SectionHeader
-            icon="heart-pulse"
-            title={t("healthData")}
-            detail={t("healthDataDetail")}
-            complete={healthComplete}
-          />
-
-          <View style={[styles.segmented, { backgroundColor: theme.surface, borderColor: theme.line }]}>
-            <SegmentButton
-              label={t("upload")}
-              icon="file-upload"
-              active={healthMode === "file"}
-              onPress={() => setHealthMode("file")}
-            />
-            <SegmentButton
-              label={t("manual")}
-              icon="pencil"
-              active={healthMode === "manual"}
-              onPress={() => setHealthMode("manual")}
-            />
-          </View>
-
-          {healthMode === "file" ? (
-            <View style={{ gap: 14 }}>
-              <View style={styles.sourceGrid}>
-                {healthSources.map((source) => (
-                  <Pressable
-                    key={source}
-                    onPress={() => setHealthSource(source)}
-                    style={[
-                      styles.sourceChip,
-                      {
-                        borderColor: healthSource === source ? theme.accent : theme.line,
-                        backgroundColor:
-                          healthSource === source ? `${theme.accent}12` : theme.card,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        color: healthSource === source ? theme.accent : theme.ink,
-                        fontWeight: "800",
-                      }}
-                    >
-                      {source}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <UploadDropzone
-                label={`${healthSource} export`}
-                detail={t("csvPdfXml")}
-                status={healthUploaded ? "uploaded" : "ready"}
-                onPress={() => setHealthUploaded((value) => !value)}
-              />
-              {healthUploaded && (
-                <View style={styles.fileList}>
-                  {demoData.healthSummary.uploadFiles.map((file) => (
-                    <FileRow key={file.name} name={file.name} detail={file.detail} />
-                  ))}
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={{ gap: 12 }}>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Field label={t("restingHr")} value={demoData.healthSummary.manualMeasurements.restingHeartRate} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Field label={t("hrv")} value={demoData.healthSummary.manualMeasurements.hrv} />
-                </View>
-              </View>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Field label={t("sleep")} value={demoData.healthSummary.manualMeasurements.sleep} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Field label={t("bloodPressure")} value={demoData.healthSummary.manualMeasurements.bloodPressure} />
-                </View>
-              </View>
-              <Field
-                label={t("symptomsMeasurements")}
-                multiline
-                value={demoData.healthSummary.manualMeasurements.symptoms}
-              />
-              <SecondaryButton
-                icon={manualEntry ? "check" : "content-save"}
-                label={manualEntry ? t("manualDataSaved") : t("saveManualData")}
-                onPress={() => setManualEntry((value) => !value)}
-              />
-            </View>
-          )}
-        </Card>
-
-        <Card>
-          <SectionHeader
             icon="note-text-outline"
             title={t("optionalNotes")}
             detail={t("optionalNotesDetail")}
           />
-          <Field label={t("notesForAida")} multiline value={intakeNotes} />
+          <Field
+            label={t("notesForAida")}
+            multiline
+            value={intakeNotes}
+            onChangeText={setIntakeNotes}
+          />
         </Card>
 
         <Card style={{ backgroundColor: theme.surface }}>
@@ -370,6 +569,13 @@ export default function UploadScreen() {
         </View>
       </View>
     </Screen>
+    <SyncConfirmationSheet
+      visible={syncSheet.open}
+      onClose={() => setSyncSheet((s) => ({ ...s, open: false }))}
+      sourceLabel={syncSheet.source}
+      syncStats={syncSheet.stats}
+    />
+    </>
   );
 }
 
@@ -407,11 +613,13 @@ function SectionHeader({
   title,
   detail,
   complete,
+  incompletePill = "required",
 }: {
   icon: "card-account-details" | "heart-pulse" | "note-text-outline";
   title: string;
-  detail: string;
+  detail?: string;
   complete?: boolean;
+  incompletePill?: "optional" | "required";
 }) {
   const { theme, t } = useAidaTheme();
   return (
@@ -424,100 +632,16 @@ function SectionHeader({
           <Text style={[styles.sectionTitle, { color: theme.ink }]}>{title}</Text>
           {complete !== undefined && (
             <Pill
-              label={complete ? t("complete") : t("required")}
-              icon={complete ? "check" : "alert-circle-outline"}
-              tone={complete ? colors.green : colors.amber}
+              label={complete ? t("complete") : incompletePill === "optional" ? t("optional") : t("required")}
+              icon={complete ? "check" : incompletePill === "optional" ? "circle-outline" : "alert-circle-outline"}
+              tone={complete ? colors.green : incompletePill === "optional" ? theme.faint : colors.amber}
             />
           )}
         </View>
-        <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 3 }}>{detail}</Text>
+        {detail ? (
+          <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 3 }}>{detail}</Text>
+        ) : null}
       </View>
-    </View>
-  );
-}
-
-function UploadDropzone({
-  label,
-  detail,
-  status,
-  onPress,
-}: {
-  label: string;
-  detail: string;
-  status: "empty" | "ready" | "uploaded";
-  onPress: () => void;
-}) {
-  const { theme, t } = useAidaTheme();
-  const uploaded = status === "uploaded";
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.dropzone,
-        {
-          borderColor: uploaded ? theme.accent : theme.line,
-          backgroundColor: uploaded ? `${theme.accent}10` : theme.surface,
-        },
-      ]}
-    >
-      <View style={[styles.uploadIcon, { backgroundColor: uploaded ? theme.accent : theme.card }]}>
-        <Icon
-          name={uploaded ? "check" : status === "ready" ? "camera-plus" : "cloud-upload-outline"}
-          size={22}
-          color={uploaded ? "#fff" : theme.accent}
-        />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900" }}>{label}</Text>
-        <Text style={{ color: theme.muted, lineHeight: 19, marginTop: 3 }}>
-          {uploaded ? t("uploadedAndReady") : detail}
-        </Text>
-      </View>
-      <Text style={{ color: theme.accent, fontWeight: "900" }}>
-        {uploaded ? t("replace") : t("add")}
-      </Text>
-    </Pressable>
-  );
-}
-
-function SegmentButton({
-  label,
-  icon,
-  active,
-  onPress,
-}: {
-  label: string;
-  icon: "file-upload" | "pencil";
-  active: boolean;
-  onPress: () => void;
-}) {
-  const { theme } = useAidaTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.segmentButton,
-        { backgroundColor: active ? theme.card : "transparent" },
-      ]}
-    >
-      <Icon name={icon} size={17} color={active ? theme.accent : theme.muted} />
-      <Text style={{ color: active ? theme.accent : theme.muted, fontWeight: "900" }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function FileRow({ name, detail }: { name: string; detail: string }) {
-  const { theme } = useAidaTheme();
-  return (
-    <View style={[styles.fileRow, { borderColor: theme.line }]}>
-      <Icon name="file-document-outline" size={20} color={theme.accent} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.ink, fontWeight: "900" }}>{name}</Text>
-        <Text style={{ color: theme.muted, marginTop: 2 }}>{detail}</Text>
-      </View>
-      <Icon name="dots-horizontal" size={22} color={theme.faint} />
     </View>
   );
 }
@@ -614,69 +738,76 @@ const styles = {
     height: 6,
     borderRadius: 999,
   },
-  dropzone: {
-    borderWidth: 1,
-    borderStyle: "dashed" as const,
-    borderRadius: 18,
-    padding: 14,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 12,
-  },
-  uploadIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-  },
   parsedPanel: {
     borderWidth: 1,
     borderRadius: 18,
     padding: 14,
     marginTop: 14,
   },
-  segmented: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 4,
-    flexDirection: "row" as const,
-    marginBottom: 14,
-  },
-  segmentButton: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 12,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    flexDirection: "row" as const,
-    gap: 7,
-  },
-  sourceGrid: {
+  chipRow: {
     flexDirection: "row" as const,
     flexWrap: "wrap" as const,
     gap: 8,
+    marginBottom: 10,
   },
-  sourceChip: {
+  chip: {
     borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  fileList: {
-    gap: 8,
-  },
-  fileRow: {
-    borderWidth: 1,
-    borderRadius: 15,
-    padding: 12,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 10,
+    paddingVertical: 8,
   },
   reviewRow: {
     flexDirection: "row" as const,
     alignItems: "flex-start" as const,
     gap: 9,
   },
+  subsectionLabel: {
+    fontSize: 12,
+    fontWeight: "900" as const,
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+    marginTop: 4,
+    marginBottom: 2,
+  },
 };
+
+function formatHealthSourceLine(
+  t: (key: I18nKey, vars?: Record<string, string | number>) => string,
+  args: { deviceSynced: boolean; lastSyncLabel: string; manualEntry: boolean; healthFileCount: number },
+): string {
+  const parts: string[] = [];
+  if (args.deviceSynced) parts.push(args.lastSyncLabel);
+  if (args.manualEntry) parts.push(t("manualVitalsLabel"));
+  if (args.healthFileCount > 0) {
+    parts.push(t("manualHealthFileCount", { count: args.healthFileCount }));
+  }
+  return parts.length ? parts.join(" · ") : t("noHealthDataProvided");
+}
+
+function buildManualVitalsBlock(fields: {
+  restingHr: string;
+  hrv: string;
+  sleep: string;
+  bloodPressure: string;
+  symptoms: string;
+}): string {
+  const lines: string[] = [];
+  if (fields.restingHr.trim()) lines.push(`Resting heart rate: ${fields.restingHr.trim()}`);
+  if (fields.hrv.trim()) lines.push(`HRV: ${fields.hrv.trim()}`);
+  if (fields.sleep.trim()) lines.push(`Sleep: ${fields.sleep.trim()}`);
+  if (fields.bloodPressure.trim()) lines.push(`Blood pressure: ${fields.bloodPressure.trim()}`);
+  if (fields.symptoms.trim()) lines.push(`Symptoms / notes: ${fields.symptoms.trim()}`);
+  if (lines.length === 0) return "";
+  return `Manual vitals (patient-entered)\n${lines.join("\n")}`;
+}
+
+function classifyHealthFileType(mime: string, name: string): "health-export" | "lab-report" | "other" {
+  const m = `${mime} ${name}`.toLowerCase();
+  if (m.includes("pdf") || m.includes("csv") || m.includes("xml") || m.includes("text/")) {
+    return "health-export";
+  }
+  if (m.startsWith("image/") || m.includes("png") || m.includes("jpg") || m.includes("heic")) {
+    return "lab-report";
+  }
+  return "other";
+}

@@ -102,3 +102,32 @@ export async function listAppointmentsByPatientId(
 
   return { data: { items: docs as AppointmentResponse[] }, source: "database" };
 }
+
+/**
+ * Sets `status` to `cancelled` when the document belongs to the given patient.
+ */
+export async function cancelAppointmentForPatient(
+  appointmentId: string,
+  patientId: string,
+): Promise<{ ok: true } | { ok: false; error: string; code: "not_found" | "unavailable" }> {
+  if (!appointmentId?.trim() || !patientId?.trim()) {
+    return { ok: false, error: "appointmentId and patientId are required", code: "unavailable" };
+  }
+  if (!isMongoConfigured()) {
+    return { ok: false, error: "Appointments are not available in this environment", code: "unavailable" };
+  }
+  const db = await getDb();
+  if (!db) {
+    return { ok: false, error: "Database unavailable", code: "unavailable" };
+  }
+
+  const result = await db.collection(collections.appointments).updateOne(
+    { appointmentId: appointmentId.trim(), patientId: patientId.trim() },
+    { $set: { status: "cancelled", updatedAt: new Date() } },
+  );
+
+  if (result.matchedCount === 0) {
+    return { ok: false, error: "Appointment not found", code: "not_found" };
+  }
+  return { ok: true };
+}

@@ -101,9 +101,13 @@ export async function apiPut<T>(path: string, body: unknown, authenticated = fal
   return apiRequest<T>(path, { method: "PUT", body, authenticated });
 }
 
+export async function apiPatch<T>(path: string, body: unknown, authenticated = false): Promise<T> {
+  return apiRequest<T>(path, { method: "PATCH", body, authenticated });
+}
+
 async function apiRequest<T>(
   path: string,
-  options: { method: "GET" | "POST" | "PUT"; body?: unknown; authenticated?: boolean },
+  options: { method: "GET" | "POST" | "PUT" | "PATCH"; body?: unknown; authenticated?: boolean },
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
@@ -207,6 +211,10 @@ export function listAppointments(patientId: string) {
 
 export function saveProviderNotes(body: { appointmentId: string; providerNotes: string }) {
   return apiPut<{ ok: boolean }>('/appointments', body);
+}
+
+export function cancelAppointment(body: { appointmentId: string; patientId: string }) {
+  return apiPatch<void>("/appointments", body);
 }
 
 export function sendAppointmentConfirmation(body: {

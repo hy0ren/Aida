@@ -1,5 +1,9 @@
 import { useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { SyncConfirmationSheet } from "../../components/SyncConfirmationSheet";
+import { syncAppleHealthFromProfile } from "../../lib/apple-health-sync";
+import type { HealthSyncRunStats } from "../../lib/synced-health-data";
 import {
   Card,
   Field,
@@ -45,7 +49,15 @@ export default function ProfileScreen() {
     t,
   } = useAidaTheme();
 
+  const [healthSyncing, setHealthSyncing] = useState(false);
+  const [syncSheet, setSyncSheet] = useState<{
+    open: boolean;
+    source: string;
+    stats: HealthSyncRunStats | null;
+  }>({ open: false, source: "", stats: null });
+
   return (
+    <>
     <Screen title={t("settings")} subtitle={t("patientSettingsSubtitle")}>
       <View style={{ gap: 16, paddingBottom: 86 }}>
         <Card>
@@ -164,9 +176,64 @@ export default function ProfileScreen() {
 
         <Card>
           <SectionTitle>{t("healthData")}</SectionTitle>
-          <ProfileRow icon="sync" title={t("syncHealthData")} detail={t("appleHealthConnected")} />
+          <Pressable
+            disabled={healthSyncing}
+            onPress={async () => {
+              if (healthSyncing) return;
+              setHealthSyncing(true);
+              try {
+                const state = await syncAppleHealthFromProfile();
+                setSyncSheet({ open: true, source: state.lastSourceLabel, stats: state.lastSyncStats ?? null });
+              } catch (e) {
+                console.warn("Health sync from profile", e);
+              } finally {
+                setHealthSyncing(false);
+              }
+            }}
+            style={({ pressed }) => ({ opacity: pressed || healthSyncing ? 0.6 : 1 })}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              {healthSyncing && <ActivityIndicator color={theme.accent} size="small" />}
+              <View style={{ flex: 1 }}>
+                <ProfileRow
+                  icon="sync"
+                  title={t("syncHealthData")}
+                  detail={t("syncHealthDataHint")}
+                />
+              </View>
+            </View>
+          </Pressable>
           <ProfileRow icon="dna" title={t("geneticPredisposition")} detail={t("notUploaded")} />
           <ProfileRow icon="camera-account" title={t("identificationPhoto")} detail={t("optional")} />
+        </Card>
+
+        <Card>
+          <SectionTitle>{t("accountAndRecords")}</SectionTitle>
+          <Pressable
+            onPress={() => router.push("/(patient)/cancelled-appointments")}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: 6,
+                gap: 10,
+              }}
+            >
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <Icon name="calendar-remove" size={22} color={theme.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.ink, fontWeight: "800" }}>{t("cancelledAppointments")}</Text>
+                  <Text style={{ color: theme.muted, fontSize: 12, marginTop: 2 }}>
+                    {t("cancelledAppointmentsProfileBlurb")}
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevron-right" size={22} color={theme.faint} />
+            </View>
+          </Pressable>
         </Card>
 
         <Card>
@@ -195,6 +262,13 @@ export default function ProfileScreen() {
         />
       </View>
     </Screen>
+    <SyncConfirmationSheet
+      visible={syncSheet.open}
+      onClose={() => setSyncSheet((s) => ({ ...s, open: false }))}
+      sourceLabel={syncSheet.source}
+      syncStats={syncSheet.stats}
+    />
+    </>
   );
 }
 

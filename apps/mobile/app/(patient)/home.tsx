@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   demoData,
   type AppointmentResponse,
   type SummaryHistoryItem,
 } from "@aida/shared";
 import { listAppointments, listSummaries } from "../../lib/api";
+import { loadSyncedHealth } from "../../lib/synced-health-data";
 import {
   Card,
   Icon,
@@ -27,9 +29,10 @@ const METRIC_ICON_MAP: Record<string, MetricIcon> = {
   "sleep-score": "sleep",
   "heart-rate-variability": "chart-bell-curve",
   steps: "shoe-print",
+  "blood-oxygen": "lungs",
 };
 
-const todaysMetrics: {
+type TodayMetric = {
   icon: MetricIcon;
   label: string;
   value: string;
@@ -37,15 +40,7 @@ const todaysMetrics: {
   detail: string;
   tone: MetricTone;
   wide?: boolean;
-}[] = demoData.biometricMetrics.map((metric) => ({
-  icon: METRIC_ICON_MAP[metric.id] ?? "lungs",
-  label: metric.label,
-  value: metric.value,
-  unit: metric.unit,
-  detail: metric.detail,
-  tone: metric.status,
-  wide: metric.wide,
-}));
+};
 
 export default function HomeScreen() {
   const { theme, mode, language, userId, patientProfile, t } = useAidaTheme();
@@ -54,39 +49,83 @@ export default function HomeScreen() {
   const [nextAppt, setNextAppt] = useState<AppointmentResponse | null>(null);
   const [latestSummary, setLatestSummary] = useState<SummaryHistoryItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [biometricsLoading, setBiometricsLoading] = useState(true);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [todaysMetrics, setTodaysMetrics] = useState<TodayMetric[]>([]);
+
+  const loadHealthFromStore = useCallback(() => {
+    setBiometricsLoading(true);
+    loadSyncedHealth()
+      .then((h) => {
+        if (h?.metrics.length) {
+          setSyncedAt(h.lastSyncAt);
+          setTodaysMetrics(
+            h.metrics.map((metric) => ({
+              icon: METRIC_ICON_MAP[metric.id] ?? "lungs",
+              label: metric.label,
+              value: metric.value,
+              unit: metric.unit,
+              detail: metric.detail,
+              tone: metric.status,
+              wide: metric.wide,
+            })),
+          );
+        } else {
+          setSyncedAt(null);
+          setTodaysMetrics([]);
+        }
+      })
+      .finally(() => {
+        setBiometricsLoading(false);
+      });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadHealthFromStore();
+    }, [loadHealthFromStore]),
+  );
 
   useEffect(() => {
     let mounted = true;
 
-    Promise.allSettled([
-      listAppointments(patientId),
-      listSummaries(patientId),
-    ]).then(([apptResult, summaryResult]) => {
-      if (!mounted) return;
-      if (apptResult.status === "fulfilled" && apptResult.value.items.length > 0) {
-        const upcoming = apptResult.value.items.find(
-          (a) => a.status === "confirmed" || a.status === "pending",
-        );
-        setNextAppt(upcoming ?? apptResult.value.items[0]);
-      }
-      if (summaryResult.status === "fulfilled" && summaryResult.value.items.length > 0) {
-        setLatestSummary(summaryResult.value.items[0]);
-      }
-      setLoading(false);
-    });
+    Promise.allSettled([listAppointments(patientId), listSummaries(patientId)]).then(
+      ([apptResult, summaryResult]) => {
+        if (!mounted) return;
+        if (apptResult.status === "fulfilled" && apptResult.value.items.length > 0) {
+          const upcoming = apptResult.value.items.find(
+            (a) => a.status === "confirmed" || a.status === "pending",
+          );
+          setNextAppt(upcoming ?? apptResult.value.items[0]);
+        }
+        if (summaryResult.status === "fulfilled" && summaryResult.value.items.length > 0) {
+          setLatestSummary(summaryResult.value.items[0]);
+        }
+        setLoading(false);
+      },
+    );
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [patientId]);
 
+  const hasMetrics = todaysMetrics.length > 0;
   const headline = latestSummary
     ? `${latestSummary.specialtyRecommendation} — ${latestSummary.urgency}`
-    : demoData.healthSummary.headline;
+    : hasMetrics
+      ? t("reviewYourReadings")
+      : t("healthStatusNoData");
   const detail = latestSummary?.summary?.slice(0, 120)
     ? `${latestSummary.summary.slice(0, 120)}...`
-    : demoData.healthSummary.detail;
+    : hasMetrics
+      ? t("metricsSyncedDetail")
+      : t("healthStatusNoDataDetail");
   const syncLabel = latestSummary
     ? formatRelative(latestSummary.createdAt)
-    : demoData.healthSummary.lastSyncLabel;
+    : syncedAt
+      ? formatRelative(syncedAt)
+      : t("lastSyncNever");
 
   const apptDoctor = nextAppt?.doctor ?? demoData.providers[0].doctor;
   const apptTime = nextAppt
@@ -107,7 +146,7 @@ export default function HomeScreen() {
               <Text style={{ color: "#b7cbc5", fontSize: 13, fontWeight: "800" }}>
                 {t("healthStatus")}
               </Text>
-              {loading ? (
+              {loading || biometricsLoading ? (
                 <ActivityIndicator color="#d7fff3" style={{ marginTop: 14 }} />
               ) : (
                 <>
@@ -175,21 +214,41 @@ export default function HomeScreen() {
                 {t("todaysMetrics")}
               </Text>
               <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-                {t("recentReadings")}
+                {hasMetrics ? t("metricsSyncedDetail") : t("recentReadings")}
               </Text>
             </View>
-            <Pill
-              label={t("updatedCount", { count: todaysMetrics.length })}
-              icon="sync"
-              tone={mode === "dark" ? "#d7fff3" : colors.green}
-            />
+            {hasMetrics && (
+              <Pill
+                label={t("updatedCount", { count: todaysMetrics.length })}
+                icon="sync"
+                tone={mode === "dark" ? "#d7fff3" : colors.green}
+              />
+            )}
           </View>
 
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-            {todaysMetrics.map((metric) => (
-              <TodayMetricCard key={metric.label} {...metric} />
-            ))}
-          </View>
+          {biometricsLoading ? (
+            <ActivityIndicator color={theme.accent} style={{ marginTop: 8 }} />
+          ) : hasMetrics ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              {todaysMetrics.map((metric) => (
+                <TodayMetricCard key={metric.label} {...metric} />
+              ))}
+            </View>
+          ) : (
+            <Card
+              style={{
+                borderColor: theme.line,
+                borderStyle: "dashed",
+                borderWidth: 1,
+                backgroundColor: theme.surface,
+              }}
+            >
+              <Text style={{ color: theme.ink, fontWeight: "900", fontSize: 16 }}>
+                {t("noBiometricsYet")}
+              </Text>
+              <Text style={{ color: theme.muted, lineHeight: 20, marginTop: 6 }}>{t("noBiometricsDetail")}</Text>
+            </Card>
+          )}
         </View>
       </View>
     </Screen>
@@ -204,7 +263,7 @@ function TodayMetricCard({
   detail,
   tone,
   wide,
-}: (typeof todaysMetrics)[number]) {
+}: TodayMetric) {
   const { theme, mode, t } = useAidaTheme();
   const isFlagged = tone === "attention";
   const accent = isFlagged ? colors.amber : colors.green;
@@ -265,12 +324,8 @@ function TodayMetricCard({
             </Text>
           )}
         </Text>
-        <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900", marginTop: 4 }}>
-          {label}
-        </Text>
-        <Text style={{ color: theme.muted, fontSize: 12, lineHeight: 17, marginTop: 6 }}>
-          {detail}
-        </Text>
+        <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "900", marginTop: 4 }}>{label}</Text>
+        <Text style={{ color: theme.muted, fontSize: 12, lineHeight: 17, marginTop: 6 }}>{detail}</Text>
       </View>
     </Card>
   );

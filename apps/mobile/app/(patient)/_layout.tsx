@@ -78,6 +78,7 @@ export default function PatientLayout() {
       <Tabs.Screen name="summary" options={hiddenTabOptions} />
       <Tabs.Screen name="call-status" options={hiddenTabOptions} />
       <Tabs.Screen name="confirmation" options={hiddenTabOptions} />
+      <Tabs.Screen name="cancelled-appointments" options={hiddenTabOptions} />
     </Tabs>
   );
 }

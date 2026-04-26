@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import {
   demoData,
   type AppointmentResponse,
   type SummaryHistoryItem,
 } from "@aida/shared";
+import { AppointmentDetailSheet } from "../../components/AppointmentDetailSheet";
 import { listAppointments, listSummaries } from "../../lib/api";
-import { Card, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
+import { buildDemoActiveAppointment } from "../../lib/demo-appointment";
+import { isNonCancelled, matchesAppointmentSearch } from "../../lib/appointment-filters";
+import { Card, Field, Icon, Pill, Screen, colors, useAidaTheme } from "../../components/aida";
 
 export default function HistoryScreen() {
   const { theme, userId, language, patientProfile, t } = useAidaTheme();
@@ -14,9 +18,13 @@ export default function HistoryScreen() {
   const [apptState, setApptState] = useState<"loading" | "success" | "error">("loading");
   const [summaries, setSummaries] = useState<SummaryHistoryItem[]>([]);
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [search, setSearch] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [sheetAppt, setSheetAppt] = useState<AppointmentResponse | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const patientId = userId ?? demoData.patient.id;
   const patientName = `${patientProfile.firstName} ${patientProfile.lastName}`.trim();
+  const demoAppt = useMemo(() => buildDemoActiveAppointment(patientId), [patientId]);
 
   const fallbackSummaries = useMemo<SummaryHistoryItem[]>(
     () => [
@@ -44,6 +52,17 @@ export default function HistoryScreen() {
     [language, patientId, patientName, patientProfile.firstName, t],
   );
 
+  const loadAppointments = useCallback(() => {
+    listAppointments(patientId)
+      .then((response) => {
+        setAppointments(response.items);
+        setApptState("success");
+      })
+      .catch(() => {
+        setApptState("error");
+      });
+  }, [patientId]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -60,68 +79,129 @@ export default function HistoryScreen() {
         setErrorMessage(error instanceof Error ? error.message : t("unableToLoadSummaryHistory"));
       });
 
-    listAppointments(patientId)
-      .then((response) => {
-        if (!mounted) return;
-        setAppointments(response.items);
-        setApptState("success");
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setApptState("error");
-      });
+    return () => {
+      mounted = false;
+    };
+  }, [fallbackSummaries, patientId, t]);
 
-    return () => { mounted = false; };
-  }, [fallbackSummaries, patientId]);
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAppointments();
+    }, [loadAppointments]),
+  );
 
   const hasRealAppointments = apptState === "success" && appointments.length > 0;
 
+  const activeList = useMemo(
+    () => appointments.filter(isNonCancelled),
+    [appointments],
+  );
+
+  const visibleActive = useMemo(
+    () => activeList.filter((a) => matchesAppointmentSearch(a, search)),
+    [activeList, search],
+  );
+
+  const showDemoWhenEmpty = apptState === "success" && !hasRealAppointments;
+  const showDemoInList = showDemoWhenEmpty && matchesAppointmentSearch(demoAppt, search);
+
   return (
+    <>
     <Screen
       title={t("history")}
       subtitle={t("historySubtitle")}
     >
       <View style={{ gap: 14, paddingBottom: 86 }}>
-        {/* Appointments section */}
-        {hasRealAppointments ? (
-          appointments.map((appt) => (
-            <Card key={appt.appointmentId}>
+        <Card>
+          <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900", marginBottom: 10 }}>
+            {t("appointmentsSection")}
+          </Text>
+          {hasRealAppointments || showDemoWhenEmpty ? (
+            <Field
+              label={t("searchAppointments")}
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t("searchAppointments")}
+            />
+          ) : apptState === "loading" ? (
+            <ActivityIndicator color={theme.accent} style={{ marginTop: 8 }} />
+          ) : null}
+        </Card>
+
+        {hasRealAppointments && activeList.length === 0 ? (
+          <Text style={{ color: theme.muted, paddingHorizontal: 4 }}>{t("noActiveAppointments")}</Text>
+        ) : hasRealAppointments && visibleActive.length === 0 && search.trim() ? (
+          <Text style={{ color: theme.muted, paddingHorizontal: 4 }}>{t("noAppointmentsMatch")}</Text>
+        ) : null}
+
+        {hasRealAppointments
+          ? visibleActive.map((appt) => (
+            <Pressable
+              key={appt.appointmentId}
+              onPress={() => {
+                setSheetAppt(appt);
+                setSheetOpen(true);
+              }}
+            >
+              <Card>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
+                      {appt.clinicName}
+                    </Text>
+                    <Text style={{ color: theme.muted, marginTop: 4 }}>
+                      {formatAppointmentTime(appt.scheduledAt)}
+                    </Text>
+                  </View>
+                  <Pill label={appt.status} icon="calendar-clock" />
+                </View>
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+                  <Pill label={appt.doctor} icon="doctor" tone={colors.plum} />
+                  <Pill label={appt.specialty} icon="stethoscope" tone={colors.amber} />
+                </View>
+                <Text style={{ color: theme.muted, fontSize: 12, marginTop: 10 }}>
+                  {t("tapForDetails")}
+                </Text>
+              </Card>
+            </Pressable>
+          ))
+          : null}
+
+        {showDemoInList && (
+          <Pressable
+            onPress={() => {
+              setSheetAppt(demoAppt);
+              setSheetOpen(true);
+            }}
+          >
+            <Card>
               <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                    {appt.clinicName}
+                    {demoData.providers[0].name}
                   </Text>
                   <Text style={{ color: theme.muted, marginTop: 4 }}>
-                    {formatAppointmentTime(appt.scheduledAt)}
+                    {demoData.selectedAppointment.displayDateTime}
                   </Text>
                 </View>
-                <Pill label={appt.status} icon="calendar-clock" />
+                <Pill label={demoData.appointmentHistory[0].status} icon="calendar-clock" />
               </View>
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-                <Pill label={appt.doctor} icon="doctor" tone={colors.plum} />
-                <Pill label={appt.specialty} icon="stethoscope" tone={colors.amber} />
+                <Pill label={demoData.providers[0].doctor} icon="doctor" tone={colors.plum} />
+                <Pill label={demoData.selectedAppointment.visitType} icon="stethoscope" tone={colors.amber} />
               </View>
+              <Text style={{ color: theme.muted, fontSize: 12, marginTop: 10 }}>{t("tapForDetails")}</Text>
             </Card>
-          ))
-        ) : (
-          <Card>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.ink, fontSize: 18, fontWeight: "900" }}>
-                  {demoData.providers[0].name}
-                </Text>
-                <Text style={{ color: theme.muted, marginTop: 4 }}>
-                  {demoData.selectedAppointment.displayDateTime}
-                </Text>
-              </View>
-              <Pill label={demoData.appointmentHistory[0].status} icon="calendar-clock" />
-            </View>
-            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-              <Pill label={demoData.providers[0].doctor} icon="doctor" tone={colors.plum} />
-              <Pill label={demoData.selectedAppointment.visitType} icon="stethoscope" tone={colors.amber} />
-            </View>
-          </Card>
+          </Pressable>
         )}
+
+        {showDemoWhenEmpty && !showDemoInList && search.trim() ? (
+          <Text style={{ color: theme.muted, paddingHorizontal: 4 }}>{t("noAppointmentsMatch")}</Text>
+        ) : null}
 
         {/* Summaries section */}
         <Card>
@@ -156,12 +236,9 @@ export default function HistoryScreen() {
           ))}
         </Card>
 
-        {/* Past visits (demo fallback when no real appointments) */}
-        {!hasRealAppointments && (
+        {!hasRealAppointments && apptState === "success" && showDemoWhenEmpty && (
           <Card>
-            <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>
-              {t("pastVisits")}
-            </Text>
+            <Text style={{ color: theme.ink, fontSize: 17, fontWeight: "900" }}>{t("pastVisits")}</Text>
             {demoData.appointmentHistory.slice(1).map((item, index) => (
               <View
                 key={item.id}
@@ -187,6 +264,20 @@ export default function HistoryScreen() {
         )}
       </View>
     </Screen>
+    <AppointmentDetailSheet
+      visible={sheetOpen}
+      onClose={() => {
+        setSheetOpen(false);
+        setSheetAppt(null);
+      }}
+      appointment={sheetAppt}
+      patientId={patientId}
+      allowCancel={
+        !showDemoWhenEmpty || (sheetAppt != null && sheetAppt.appointmentId !== demoAppt.appointmentId)
+      }
+      onCancelled={loadAppointments}
+    />
+    </>
   );
 }
 

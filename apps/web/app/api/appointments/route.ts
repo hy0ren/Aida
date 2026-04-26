@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  cancelAppointmentForPatient,
   listAppointmentsByPatientId,
   processCreateAppointment,
   updateAppointmentNotes,
@@ -64,4 +65,33 @@ export async function PUT(req: Request) {
     const error = err instanceof Error ? err.message : "Failed to save notes";
     return NextResponse.json({ ok: false, error }, { status: 500 });
   }
+}
+
+/**
+ * `PATCH /api/appointments` — patient cancels a visit: `{ appointmentId, patientId }`.
+ */
+export async function PATCH(req: Request) {
+  let body: { appointmentId?: string; patientId?: string } = {};
+  try {
+    body = (await req.json()) as { appointmentId?: string; patientId?: string };
+  } catch {
+    body = {};
+  }
+
+  if (!body.appointmentId?.trim() || !body.patientId?.trim()) {
+    return NextResponse.json(
+      { ok: false, error: "appointmentId and patientId are required" },
+      { status: 400 },
+    );
+  }
+
+  const result = await cancelAppointmentForPatient(
+    body.appointmentId.trim(),
+    body.patientId.trim(),
+  );
+  if (!result.ok) {
+    const status = result.code === "not_found" ? 404 : 503;
+    return NextResponse.json({ ok: false, error: result.error }, { status });
+  }
+  return NextResponse.json({ ok: true });
 }

@@ -40,9 +40,8 @@ export async function processUploadIntake(body: UploadRequestBody): Promise<{
   const uploadId = `upload-${new ObjectId().toString()}`;
   const patientId = body.patientId ?? demoData.patient.id;
   const notes = typeof body.notes === "string" ? body.notes : demoUploadResponse.notes;
-  const readyForSummary = Boolean(
-    (body.insuranceComplete ?? true) && (body.healthComplete ?? true)
-  );
+  /** Insurance is the gate for the summary flow; health (sync, manual, or files) is optional. */
+  const readyForSummary = Boolean(body.insuranceComplete ?? true);
 
   let files: UploadedFile[] = demoUploadResponse.files.map((f) => ({ ...f }));
 

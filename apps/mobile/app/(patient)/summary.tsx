@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { demoData } from "@aida/shared";
+import type { DemoBiometricMetric } from "@aida/shared";
 import { summarizeUpload } from "../../lib/api";
+import { loadSyncedHealth } from "../../lib/synced-health-data";
 import {
   Card,
   MetricCard,
@@ -30,7 +33,36 @@ export default function SummaryScreen() {
     t("preferredLanguageLabel", { language }),
     demoData.selectedAppointment.reason,
   ]);
-  const flaggedMetrics = demoData.biometricMetrics.filter((metric) => metric.status === "attention");
+  const [flaggedPair, setFlaggedPair] = useState<[DemoBiometricMetric, DemoBiometricMetric] | null>(null);
+
+  const loadFlaggedFromStore = useCallback(() => {
+    loadSyncedHealth().then((h) => {
+      if (!h?.metrics.length) {
+        setFlaggedPair(null);
+        return;
+      }
+      const attention = h.metrics.filter((m) => m.status === "attention");
+      let first: DemoBiometricMetric;
+      let second: DemoBiometricMetric;
+      if (attention.length >= 2) {
+        first = attention[0]!;
+        second = attention[1]!;
+      } else if (attention.length === 1) {
+        first = attention[0]!;
+        second = h.metrics.find((m) => m.id !== first.id) ?? h.metrics[0]!;
+      } else {
+        first = h.metrics[0]!;
+        second = h.metrics[1] ?? h.metrics[0]!;
+      }
+      setFlaggedPair([first, second]);
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFlaggedFromStore();
+    }, [loadFlaggedFromStore]),
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -77,16 +109,16 @@ export default function SummaryScreen() {
         <View style={{ flexDirection: "row", gap: 10 }}>
           <MetricCard
             icon="heart"
-            label={flaggedMetrics[0].shortLabel}
-            value={flaggedMetrics[0].value}
-            detail={flaggedMetrics[0].summaryDetail}
+            label={flaggedPair?.[0].shortLabel ?? "—"}
+            value={flaggedPair?.[0].value ?? "—"}
+            detail={flaggedPair?.[0].summaryDetail ?? t("noBiometricsDetail")}
             flagged
           />
           <MetricCard
             icon="sleep"
-            label={flaggedMetrics[1].shortLabel}
-            value={flaggedMetrics[1].value}
-            detail={flaggedMetrics[1].summaryDetail}
+            label={flaggedPair?.[1].shortLabel ?? "—"}
+            value={flaggedPair?.[1].value ?? "—"}
+            detail={flaggedPair?.[1].summaryDetail ?? t("noBiometricsDetail")}
             flagged
           />
         </View>
